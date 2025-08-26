@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Expo Mobile Frame</title>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: #111;
+        color: #ddd;
+        font-family: Arial, sans-serif;
+      }
+
+      .selector {
+        margin: 15px 0 5px 0;
+      }
+
+      select {
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        background: #222;
+        color: #ddd;
+        font-size: 14px;
+      }
+
+      .label-top {
+        margin-bottom: 10px;
+        font-size: 18px;
+        font-weight: bold;
+      }
+
+      .frame-wrapper {
+        display: flex;
+        align-items: center;
+      }
+
+      .label-side {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        font-size: 14px;
+        margin: 0 8px;
+        color: #aaa;
+      }
+
+      iframe {
+        border: 16px solid #333;
+        border-radius: 40px;
+        background: white;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Seletor de celular -->
+    <div class="selector">
+      <label for="device">Escolha o celular:</label>
+      <select id="device">
+        <option value="galaxy">Samsung Galaxy A15 5G (390 × 845)</option>
+        <option value="iphone">iPhone 14 Pro (393 × 852)</option>
+        <option value="pixel">Google Pixel 7 (412 × 915)</option>
+        <option value="ipad">iPad Mini (768 × 1024)</option>
+      </select>
+    </div>
+
+    <!-- Nome do celular -->
+    <div id="device-name" class="label-top">Samsung Galaxy A15 5G</div>
+
+    <!-- Preview com dimensões -->
+    <div class="frame-wrapper">
+      <div id="height-label" class="label-side">845px</div>
+      <iframe id="preview" src="http://localhost:8081" title="Expo App"></iframe>
+      <div id="width-label" class="label-side">390px</div>
+    </div>
+
+    <script>
+      const devices = {
+        galaxy: { name: "Samsung Galaxy A15 5G", w: 390, h: 845 },
+        iphone: { name: "iPhone 14 Pro", w: 393, h: 852 },
+        pixel: { name: "Google Pixel 7", w: 412, h: 915 },
+        ipad: { name: "iPad Mini", w: 768, h: 1024 }
+      };
+
+      const select = document.getElementById("device");
+      const iframe = document.getElementById("preview");
+      const nameLabel = document.getElementById("device-name");
+      const widthLabel = document.getElementById("width-label");
+      const heightLabel = document.getElementById("height-label");
+
+      // Atualiza preview ao trocar celular
+      select.addEventListener("change", () => {
+        const d = devices[select.value];
+        iframe.style.width = d.w + "px";
+        iframe.style.height = d.h + "px";
+        nameLabel.textContent = d.name;
+        widthLabel.textContent = d.w + "px";
+        heightLabel.textContent = d.h + "px";
+      });
+
+      // inicial
+      iframe.style.width = devices.galaxy.w + "px";
+      iframe.style.height = devices.galaxy.h + "px";
+    </script>
+  </body>
+</html>
