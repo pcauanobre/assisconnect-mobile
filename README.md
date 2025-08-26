@@ -1,27 +1,34 @@
-# AssisConnect – Sistema de Gestão para Responsáveis de Idosos
+# AssisConnect – Aplicativo Mobile para Responsáveis
 
-**AssisConnect** é um projeto em desenvolvimento que tem como objetivo apoiar responsáveis e cuidadores de idosos na **organização do dia a dia**, permitindo mais **visibilidade, controle e praticidade** sobre dados pessoais, saúde e rotinas.
+O **AssisConnect Mobile** é a versão mobile do sistema AssisConnect, criado para que **familiares ou responsáveis por um idoso específico** possam acompanhar de forma prática e organizada informações importantes sobre ele.
 
-A ideia é oferecer uma alternativa digital simples para substituir o uso de registros em papel, trazendo mais segurança e eficiência no acompanhamento dos residentes.
+Enquanto a **versão web** é voltada para os **administradores da instituição**, que gerenciam todos os residentes, o app mobile foi pensado para dar ao **responsável de cada idoso** uma visão clara e individualizada sobre a rotina e cuidados de seu ente querido.
+
+---
+
+## 🎯 Objetivo
+Oferecer uma ferramenta acessível e simples, que permita aos responsáveis:
+- Acompanhar **medicações** do idoso.  
+- Ver o **histórico de saúde** e anotações relevantes.  
+- Consultar **relatórios periódicos** enviados pela instituição.  
+- Receber informações de forma **segura e organizada**.  
 
 ---
 
 ## 🛠 Tecnologias Utilizadas
-- **React Native (Expo)** – Front-end mobile e web  
-- **JavaScript** – Lógica de interface  
-- **Node.js + npm** – Gerenciamento de dependências  
-- **GitHub** – Versionamento e colaboração  
+- **React Native (Expo)** – desenvolvimento mobile multiplataforma (Android, iOS e Web).  
+- **JavaScript** – lógica da aplicação.  
+- **Node.js + npm** – gerenciamento de pacotes.  
+- **GitHub** – versionamento e colaboração.  
 
 ---
 
 ## 📦 Funcionalidades (em desenvolvimento)
-- **Login seguro** – acesso autenticado ao sistema.  
-- **Dashboard** – visão geral das informações principais do idoso.  
-- **Cadastro de Idosos** – registro digital de cada residente.  
-- **Formulário detalhado** – dados pessoais, saúde, contatos e observações.  
-- **Relatórios** – acompanhamento periódico da situação do idoso.  
-
-Cada módulo é pensado para ser **intuitivo e acessível**, permitindo que cuidadores, responsáveis e administradores usem sem dificuldade.
+- **Login do responsável** – cada usuário acessa apenas os dados do idoso sob sua responsabilidade.  
+- **Dashboard pessoal** – visão geral das informações do idoso (medicações, consultas, atividades).  
+- **Histórico de saúde** – registros médicos, alergias, anotações da equipe.  
+- **Notificações** – lembretes sobre medicamentos ou eventos importantes.  
+- **Relatórios** – acesso a relatórios mensais ou semanais emitidos pela instituição.  
 
 ---
 
