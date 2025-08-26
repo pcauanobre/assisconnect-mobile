@@ -1,11 +1,32 @@
-# Sample Snack app
+# AssisConnect – Sistema de Gestão para Responsáveis de Idosos
 
-Open the `App.js` file to start writing some code. You can preview the changes directly on your phone or tablet by scanning the **QR code** or use the iOS or Android emulators. When you're done, click **Save** and share the link!
+**AssisConnect** é um projeto em desenvolvimento que tem como objetivo apoiar responsáveis e cuidadores de idosos na **organização do dia a dia**, permitindo mais **visibilidade, controle e praticidade** sobre dados pessoais, saúde e rotinas.
 
-When you're ready to see everything that Expo provides (or if you want to use your own editor) you can **Download** your project and use it with [expo cli](https://docs.expo.dev/get-started/installation/#expo-cli)).
+A ideia é oferecer uma alternativa digital simples para substituir o uso de registros em papel, trazendo mais segurança e eficiência no acompanhamento dos residentes.
 
-All projects created in Snack are publicly available, so you can easily share the link to this project via link, or embed it on a web page with the `<>` button.
+---
 
-If you're having problems, you can tweet to us [@expo](https://twitter.com/expo) or ask in our [forums](https://forums.expo.dev/c/expo-dev-tools/61) or [Discord](https://chat.expo.dev/).
+## 🛠 Tecnologias Utilizadas
+- **React Native (Expo)** – Front-end mobile e web  
+- **JavaScript** – Lógica de interface  
+- **Node.js + npm** – Gerenciamento de dependências  
+- **GitHub** – Versionamento e colaboração  
 
-Snack is Open Source. You can find the code on the [GitHub repo](https://github.com/expo/snack).
+---
+
+## 📦 Funcionalidades (em desenvolvimento)
+- **Login seguro** – acesso autenticado ao sistema.  
+- **Dashboard** – visão geral das informações principais do idoso.  
+- **Cadastro de Idosos** – registro digital de cada residente.  
+- **Formulário detalhado** – dados pessoais, saúde, contatos e observações.  
+- **Relatórios** – acompanhamento periódico da situação do idoso.  
+
+Cada módulo é pensado para ser **intuitivo e acessível**, permitindo que cuidadores, responsáveis e administradores usem sem dificuldade.
+
+---
+
+## 🚀 Como executar o projeto
+1. **Clonar o repositório**
+   ```bash
+   git clone https://github.com/pcauanobre/AssisConnectMobile.git
+   cd AssisConnectMobile
