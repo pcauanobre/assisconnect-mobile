@@ -1,39 +1,78 @@
-# AssisConnect – Aplicativo Mobile para Responsáveis
+# 📱 AssisConnect – Aplicativo Mobile para Responsáveis
 
-O **AssisConnect Mobile** é a versão mobile do sistema AssisConnect, criado para que **familiares ou responsáveis por um idoso específico** possam acompanhar de forma prática e organizada informações importantes sobre ele.
-
-Enquanto a **versão web** é voltada para os **administradores da instituição**, que gerenciam todos os residentes, o app mobile foi pensado para dar ao **responsável de cada idoso** uma visão clara e individualizada sobre a rotina e cuidados de seu ente querido.
+O **AssisConnect Mobile** é a versão do sistema pensada para **familiares/responsáveis** dos idosos cadastrados, com acesso a medicações, histórico e relatórios.  
+A versão **web** é usada pelos administradores da instituição (gestão geral).
 
 ---
 
 ## 🎯 Objetivo
-Oferecer uma ferramenta acessível e simples, que permita aos responsáveis:
-- Acompanhar **medicações** do idoso.  
-- Ver o **histórico de saúde** e anotações relevantes.  
-- Consultar **relatórios periódicos** enviados pela instituição.  
-- Receber informações de forma **segura e organizada**.  
 
----
-
-## 🛠 Tecnologias Utilizadas
-- **React Native (Expo)** – desenvolvimento mobile multiplataforma (Android, iOS e Web).  
-- **JavaScript** – lógica da aplicação.  
-- **Node.js + npm** – gerenciamento de pacotes.  
-- **GitHub** – versionamento e colaboração.  
+- Fornecer visão individual do idoso ao responsável.  
+- Centralizar medicações, histórico clínico e relatórios.  
+- Garantir informação organizada e segura.  
 
 ---
 
 ## 📦 Funcionalidades (em desenvolvimento)
-- **Login do responsável** – cada usuário acessa apenas os dados do idoso sob sua responsabilidade.  
-- **Dashboard pessoal** – visão geral das informações do idoso (medicações, consultas, atividades).  
-- **Histórico de saúde** – registros médicos, alergias, anotações da equipe.  
-- **Notificações** – lembretes sobre medicamentos ou eventos importantes.  
-- **Relatórios** – acesso a relatórios mensais ou semanais emitidos pela instituição.  
+
+- Login do responsável (acesso apenas ao seu idoso).  
+- **Dashboard**: medicações do dia, consultas, atividades.  
+- Histórico de saúde: alergias, condições, anotações.  
+- Notificações/alertas (medicação/eventos).  
+- Relatórios periódicos da instituição.  
 
 ---
 
-## 🚀 Como executar o projeto
-1. **Clonar o repositório**
-   ```bash
-   git clone https://github.com/pcauanobre/AssisConnectMobile.git
-   cd AssisConnectMobile
+## 🛠 Tecnologias
+
+- **React Native (Expo)** → app mobile + web  
+- **JavaScript** → lógica da aplicação  
+- **Node.js + npm** → dependências  
+- **Git/GitHub** → versionamento/colaboração  
+
+---
+
+## 🚀 Guia de Uso
+
+### Passo a passo no terminal
+
+```bash
+# 0) Configurar identidade do Git (uma vez no PC)
+git config --global user.name  "Seu Nome"
+git config --global user.email "seuemail@exemplo.com"
+git config --global --list
+
+
+# 1) Clonar o repositório e entrar na pasta
+git clone https://github.com/pcauanobre/assisconnect-mobile.git
+cd assisconnect-mobile
+
+
+# 2) Instalar dependências do projeto
+npm install
+npx expo install react-dom react-native-web @expo/metro-runtime
+
+
+# 3) Rodar o projeto
+# Web (navegador) – por padrão em http://localhost:8081
+npx expo start --web
+
+# OU: Expo Go (Android/iOS) – mostra QR Code no terminal
+npx expo start
+
+
+# 4) Fluxo diário de Git (antes, durante e depois de editar)
+# (Antes de começar) Atualizar sua cópia local
+git pull origin main
+
+# (Após editar) Conferir o que mudou
+git status
+
+# Preparar TODAS as mudanças para commit
+git add -A
+
+# Criar o commit (mensagem clara do que foi feito)
+git commit -m "feat: descrição breve do que foi implementado"
+
+# Enviar para o GitHub (branch atual, geralmente 'main')
+git push
