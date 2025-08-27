@@ -8,6 +8,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: flex-start;
         height: 100vh;
         margin: 0;
         background: #111;
@@ -54,16 +55,16 @@
         background: #666;
       }
 
-      /* largura fixa pro label central */
       #zoom-label {
         display: inline-block;
-        min-width: 120px; /* ajusta se quiser mais ou menos espaço */
+        min-width: 120px;
         text-align: center;
       }
 
       .frame-wrapper {
         display: flex;
         align-items: center;
+        justify-content: center;
         transform-origin: top center;
       }
 
@@ -79,6 +80,7 @@
         border: 16px solid #333;
         border-radius: 40px;
         background: white;
+        display: block;
       }
     </style>
   </head>
@@ -107,7 +109,13 @@
     <!-- Preview com dimensões -->
     <div id="frame-container" class="frame-wrapper">
       <div id="height-label" class="label-side">845px</div>
-      <iframe id="preview" src="http://localhost:8081" title="Expo App"></iframe>
+      <iframe
+        id="preview"
+        src="http://localhost:8081"
+        title="Expo App"
+        width="390"
+        height="845"
+      ></iframe>
       <div id="width-label" class="label-side">390px</div>
     </div>
 
@@ -116,7 +124,7 @@
         galaxy: { name: "Samsung Galaxy A15 5G", w: 390, h: 845 },
         iphone: { name: "iPhone 14 Pro", w: 393, h: 852 },
         pixel: { name: "Google Pixel 7", w: 412, h: 915 },
-        ipad: { name: "iPad Mini", w: 768, h: 1024 }
+        ipad: { name: "iPad Mini", w: 768, h: 1024 },
       };
 
       const select = document.getElementById("device");
@@ -129,15 +137,15 @@
       const zoomLabel = document.getElementById("zoom-label");
       const frameContainer = document.getElementById("frame-container");
 
-      let zoom = 1.0; // zoom inicial (100%)
+      let zoom = 1.0;
 
       function updateZoom() {
         frameContainer.style.transform = `scale(${zoom})`;
         const percent = Math.round(zoom * 100);
-        zoomLabel.textContent = percent + "% " + (percent === 100 ? "(padrão)" : "");
+        zoomLabel.textContent =
+          percent + "% " + (percent === 100 ? "(padrão)" : "");
       }
 
-      // Botões de zoom
       zoomIn.addEventListener("click", () => {
         zoom += 0.05;
         updateZoom();
@@ -150,7 +158,6 @@
         }
       });
 
-      // Atalhos de teclado (+ e -)
       document.addEventListener("keydown", (event) => {
         if (event.key === "+" || event.key === "=") {
           zoom += 0.05;
@@ -163,23 +170,21 @@
         }
       });
 
-      // Atualiza preview ao trocar celular
       select.addEventListener("change", () => {
         const d = devices[select.value];
-        iframe.style.width = d.w + "px";
-        iframe.style.height = d.h + "px";
+        iframe.width = d.w;
+        iframe.height = d.h;
         nameLabel.textContent = d.name;
         widthLabel.textContent = d.w + "px";
         heightLabel.textContent = d.h + "px";
-        zoom = 1.0; // resetar para 100% ao trocar
+        zoom = 1.0;
         updateZoom();
       });
 
-      // Inicial
-      iframe.style.width = devices.galaxy.w + "px";
-      iframe.style.height = devices.galaxy.h + "px";
+      // inicial
+      iframe.width = devices.galaxy.w;
+      iframe.height = devices.galaxy.h;
       updateZoom();
     </script>
   </body>
 </html>
--
