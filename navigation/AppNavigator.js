@@ -1,15 +1,17 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import LoginScreen from '../screens/Login/LoginScreen';
+import LoginCPFScreen from '../screens/Login/LoginCPFScreen';
+import LoginSmsScreen from '../screens/Login/LoginSmsScreen';
+import HomeScreen from '../screens/Home/HomeScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
   return (
-    <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="MenuIdoso" component={MenuIdosoScreen} />
-      {/* outras telas aqui */}
+    <Stack.Navigator initialRouteName="LoginCPF" screenOptions={{headerShown:false}}>
+      <Stack.Screen name="LoginCPF" component={LoginCPFScreen} />
+      <Stack.Screen name="LoginSms" component={LoginSmsScreen} />
+      <Stack.Screen name="Home" component={HomeScreen} />
     </Stack.Navigator>
   );
 }

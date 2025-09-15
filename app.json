@@ -1,29 +1,19 @@
 {
   "expo": {
-    "name": "assisconnectmobile",
-    "slug": "snack-8ba082af-82aa-4c51-ac2f-325fcaaa093b",
+    "name": "AssisConnect",
+    "slug": "assisconnect-starter",
+    "scheme": "assisconnect",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo-assisconnect.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo-assisconnect.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#F5E8D9"
     },
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "assetBundlePatterns": [
+      "**/*"
+    ]
   }
 }
