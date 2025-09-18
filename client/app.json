@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "AssisConnect",
+    "slug": "assisconnect-starter",
+    "scheme": "assisconnect",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo-assisconnect.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/logo-assisconnect.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F5E8D9"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}
