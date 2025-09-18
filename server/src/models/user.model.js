@@ -1,1 +1,0 @@
-// User/Responsible model placeholder
