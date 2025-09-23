@@ -1,0 +1,41 @@
+# dependências
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# lockfiles (MANTER para consistência das dependências)
+# Se usar apenas npm, mantenha o package-lock.json
+# Se usar apenas yarn, mantenha o yarn.lock
+# Se usar os dois, pode manter ambos para segurança
+# NÃO ignore o package-lock.json
+# NÃO ignore o yarn.lock
+# -> então remova "package-lock.json" daqui!
+
+# expo
+.expo/
+.expo-shared/
+
+# build
+dist/
+build/
+
+# sistema operacional
+.DS_Store
+Thumbs.db
+
+# ambiente
+.env
+.env.local
+.env.*.local
+
+# firebase credenciais
+server/firebase-key.json
+
+# logs
+logs/
+*.log
+
+# editor
+.vscode/
+.idea/
