@@ -1,7 +1,6 @@
 // client/screens/Login/LoginCPFScreen.js
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TextInput,
@@ -9,82 +8,41 @@ import {
   StyleSheet,
   StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import colors from "../../styles/colors.js";
 import Logo from "../../components/Logo";
 import { sanitizeCpfRg } from "../../utils/validators";
 import CustomPopup from "../../components/CustomPopup";
-
-// API (backend)
 import { startLogin } from "../../src/services/api";
-
-// Firebase (Web)
-import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
-import { auth } from "../../utils/firebaseClient";
-import { setPhoneConfirmation } from "../../utils/phoneAuthSession";
 
 export default function LoginCPFScreen({ navigation }) {
   const [cpf, setCpf] = useState("");
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ visible: false, message: "" });
-  const recaptchaCreatedRef = useRef(false);
-
-  // Cria (uma vez) o reCAPTCHA invisível exigido pelo Phone Auth (Web)
-  const ensureRecaptcha = () => {
-    if (typeof window === "undefined") return;
-    if (recaptchaCreatedRef.current) return;
-
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(
-        auth,
-        "recaptcha-container",
-        { size: "invisible" }
-      );
-    }
-    recaptchaCreatedRef.current = true;
-  };
 
   const handleNext = async () => {
     try {
       setLoading(true);
-
-      // 1) pergunta para o backend se o CPF existe e qual telefone usar
       const data = await startLogin(cpf);
 
-      if (!data?.success || !data?.telefone) {
-        setPopup({
-          visible: true,
-          message: data?.error || "❌ Não foi possível enviar o código.",
-        });
+      if (!data?.success) {
+        const raw = (data?.error || "").toLowerCase();
+        const msg = raw.includes("não cadastrada")
+          ? "Pessoa idosa não encontrada."
+          : data?.error || "Não foi possível enviar o código por e-mail.";
+        setPopup({ visible: true, message: msg });
         return;
       }
 
-      // 2) dispara o SMS REAL (ou aceita número de teste) via Firebase Web
-      ensureRecaptcha();
-      const confirmation = await signInWithPhoneNumber(
-        auth,
-        data.telefone,
-        window.recaptchaVerifier
-      );
-
-      // guarda o confirmationResult para a tela seguinte
-      setPhoneConfirmation(confirmation);
-
-      // 3) feedback + navegação
-      const msg =
-        `📲 Enviamos um SMS para ${data.telefone}.\n` +
-        `Se for número de TESTE cadastrado no Firebase, insira o código fixo.`;
-      setPopup({ visible: true, message: msg });
-
-      setTimeout(() => {
-        setPopup({ visible: false, message: "" });
-        navigation.navigate("LoginSms", { cpf, telefone: data.telefone });
-      }, 1200);
-    } catch (err) {
-      console.error(err);
+      // Encontrou → vai imediatamente para a tela de código (aguarda e-mail lá)
+      navigation.navigate("LoginEmail", {
+        cpf,
+        email: data.email || null, // e-mail completo
+      });
+    } catch {
       setPopup({
         visible: true,
-        message:
-          "⚠️ Não foi possível iniciar o login por telefone. Verifique reCAPTCHA e domínios autorizados.",
+        message: "Erro ao iniciar envio do código por e-mail.",
       });
     } finally {
       setLoading(false);
@@ -97,8 +55,10 @@ export default function LoginCPFScreen({ navigation }) {
       <View style={styles.container}>
         <Logo size={130} />
 
-        <Text style={styles.title}>Bem vindo ao Assisconnect!</Text>
-        <Text style={styles.subtitle}>Acesse sua conta</Text>
+        <Text style={styles.title}>AssisConnect</Text>
+        <Text style={styles.subtitle}>
+          Informe o CPF/RG para enviarmos um código de verificação por e-mail.
+        </Text>
 
         <View style={{ height: 18 }} />
 
@@ -106,23 +66,18 @@ export default function LoginCPFScreen({ navigation }) {
         <TextInput
           value={cpf}
           onChangeText={(t) => setCpf(sanitizeCpfRg(t))}
-          placeholder="Digite o CPF ou RG da pessoa idosa"
+          placeholder="Digite o CPF da pessoa idosa"
           placeholderTextColor={colors.muted}
           keyboardType="number-pad"
           style={styles.input}
         />
 
         <TouchableOpacity
-          style={[
-            styles.button,
-            { opacity: cpf.length >= 5 && !loading ? 1 : 0.6 },
-          ]}
+          style={[styles.button, { opacity: cpf.length >= 5 && !loading ? 1 : 0.6 }]}
           disabled={cpf.length < 5 || loading}
           onPress={handleNext}
         >
-          <Text style={styles.buttonText}>
-            {loading ? "Enviando..." : "Próximo"}
-          </Text>
+          <Text style={styles.buttonText}>{loading ? "Enviando..." : "Próximo"}</Text>
         </TouchableOpacity>
 
         <CustomPopup
@@ -130,9 +85,6 @@ export default function LoginCPFScreen({ navigation }) {
           message={popup.message}
           onClose={() => setPopup({ visible: false, message: "" })}
         />
-
-        {/* container exigido para o reCAPTCHA do Firebase Web */}
-        <View id="recaptcha-container" />
       </View>
     </SafeAreaView>
   );
@@ -147,12 +99,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "800",
     color: colors.primary,
-    marginBottom: 4,
+    marginTop: 12,
+    textAlign: "center",
   },
-  subtitle: { fontSize: 12, color: colors.muted },
+  subtitle: {
+    fontSize: 12,
+    color: colors.muted,
+    marginTop: 6,
+    textAlign: "center",
+    lineHeight: 18,
+  },
   fieldLabel: {
     alignSelf: "flex-start",
     color: colors.muted,
