@@ -1,19 +1,18 @@
 // server/src/config/firebase.js
 import admin from "firebase-admin";
 import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
-// ⚠️ NÃO COMITAR ESTE ARQUIVO firebase-key.json!
-// Ele deve existir localmente em: server/firebase-key.json
-const serviceAccount = JSON.parse(
-  readFileSync("./firebase-key.json", "utf-8")
-);
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const keyPathEnv = process.env.FIREBASE_KEY_PATH; // opcional
+const defaultPath = join(__dirname, "../../firebase-key.json");
+const keyPath = keyPathEnv ? join(__dirname, "../../", keyPathEnv) : defaultPath;
 
-if (!admin.apps?.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    // databaseURL é opcional para Firestore; pode manter sem.
-    // databaseURL: "https://assisconnect-mobile.firebaseio.com",
-  });
+const serviceAccount = JSON.parse(readFileSync(keyPath, "utf-8"));
+
+if (!admin.apps.length) {
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 }
 
 export default admin;
