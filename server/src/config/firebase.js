@@ -11,8 +11,10 @@ const keyPath = keyPathEnv ? join(__dirname, "../../", keyPathEnv) : defaultPath
 
 const serviceAccount = JSON.parse(readFileSync(keyPath, "utf-8"));
 
+const db = admin.firestore();
+
 if (!admin.apps.length) {
   admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 }
 
-export default admin;
+export { db, admin };

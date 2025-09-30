@@ -24,6 +24,8 @@ class PessoaIdosaModel {
         this.endereco = value.endereco;
         this.medicamentos = value.medicamentos;
         this.responsavel = value.responsavel;
+        this.humor = value.humor;
+        this.alimentacao = value.alimentacao;
         this.telefone_responsavel = value.telefone_responsavel;
         this.createdAt = value.createdAt;
     }
@@ -40,6 +42,8 @@ class PessoaIdosaModel {
             endereco: this.endereco,
             medicamentos: this.medicamentos,
             responsavel: this.responsavel,
+            humor: this.humor,
+            alimentacao: this.alimentacao,
             telefone_responsavel: this.telefone_responsavel,
             createdAt: this.createdAt,
         };
@@ -73,6 +77,8 @@ class PessoaIdosaModel {
             }).required(),
 
             responsavel: Joi.string().required(),
+            humor: Joi.number().min(1).max(5).required(),
+            alimentacao: Joi.string().required(),
             telefone_responsavel: Joi.string()
                 .pattern(/^\+55\s\d{2}\s9?\d{4}-\d{4}$/)
                 .required(), // padrão de número (+55 12 3456-7890)
