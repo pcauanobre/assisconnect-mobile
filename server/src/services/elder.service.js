@@ -1,11 +1,12 @@
 import { db } from "../config/firebase.js";
+import PessoaIdosaModel from "../models/elder.model.js";
 
 const COLLECTION = "pessoaidosa";
 
-export const elderService = {
+const elderService = {
   async getAll() {
     const snapshot = await db.collection(COLLECTION).get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   },
 
   async getById(id) {
@@ -16,20 +17,16 @@ export const elderService = {
   },
 
   async create(data) {
-    const { error, value } = elder.validate(data);
-    if (error) throw new Error(error.details[0].message);
-
-    const ref = await db.collection(COLLECTION).add(value);
-    return { id: ref.id, ...value };
+    const pessoa = new PessoaIdosaModel(data);
+    const ref = await db.collection(COLLECTION).add(pessoa.toJSON());
+    return { id: ref.id, ...pessoa.toJSON() };
   },
 
   async update(id, data) {
-    const { error, value } = elder.validate(data, { allowUnknown: true });
-    if (error) throw new Error(error.details[0].message);
-
-    const ref = db.collection(COLLECTION).doc(id);
-    await ref.update(value);
-    return { id, ...value };
+    // Atualização total (valida novamente)
+    const pessoa = new PessoaIdosaModel(data);
+    await db.collection(COLLECTION).doc(id).update(pessoa.toJSON());
+    return { id, ...pessoa.toJSON() };
   },
 
   async remove(id) {
@@ -38,3 +35,6 @@ export const elderService = {
     return { success: true };
   },
 };
+
+export default elderService;
+// s

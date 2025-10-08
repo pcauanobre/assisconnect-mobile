@@ -1,5 +1,5 @@
 import express from "express";
-import { elderService } from "../services/elder.service.js";
+import elderService from "../services/elder.service.js";
 
 const router = express.Router();
 
@@ -54,3 +54,4 @@ router.delete("/:id", async (req, res) => {
 });
 
 export default router;
+// s

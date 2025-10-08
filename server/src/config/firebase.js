@@ -1,20 +1,20 @@
-// server/src/config/firebase.js
-import admin from "firebase-admin";
-import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { readFileSync } from "fs";
+import admin from "firebase-admin";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const keyPathEnv = process.env.FIREBASE_KEY_PATH; // opcional
-const defaultPath = join(__dirname, "../../firebase-key.json");
-const keyPath = keyPathEnv ? join(__dirname, "../../", keyPathEnv) : defaultPath;
+const keyPath = join(__dirname, "firebase-key.json"); // caminho direto, sem ../../
 
 const serviceAccount = JSON.parse(readFileSync(keyPath, "utf-8"));
 
-const db = admin.firestore();
-
 if (!admin.apps.length) {
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
 }
 
+const db = admin.firestore();
 export { db, admin };
+
+// mudei o diretorio da key
