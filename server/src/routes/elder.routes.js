@@ -23,6 +23,52 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// QUERY ESPECIFICA DE GET (COLOCAR TIPO (EX: MEDICAMENTO, RESPONSAVEL, COMENTARIO, HUMOR, ALIMENTACAO))
+router.get("/:id/query", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tipo } = req.query;
+
+    if (!tipo) {
+      return res.status(400).json({
+        error:
+          "É necessário informar o parâmetro 'tipo' (responsavel, medicamentos, alimentacao, comentario).",
+      });
+    }
+
+    const elder = await elderService.getById(id);
+    if (!elder) {
+      return res.status(404).json({ error: "Pessoa Idosa não encontrada." });
+    }
+
+    // switch direto, sem filtro por data
+    switch (tipo.toLowerCase()) {
+      case "responsavel":
+        return res.json({ responsavel: elder.responsavel });
+
+      case "medicamentos":
+        return res.json({ medicamentos: elder.medicamentos });
+
+      case "alimentacao":
+        return res.json({ alimentacao: elder.alimentacao });
+
+      case "comentario":
+        return res.json({ comentario: elder.comentario });
+
+      case "humor":
+        return res.json({ humor: elder.humor });
+
+      default:
+        return res.status(400).json({
+          error:
+            "Tipo inválido. Use um dos seguintes: responsavel, medicamentos, alimentacao, comentario.",
+        });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST (create)
 router.post("/", async (req, res) => {
   try {
@@ -54,4 +100,3 @@ router.delete("/:id", async (req, res) => {
 });
 
 export default router;
-// s
