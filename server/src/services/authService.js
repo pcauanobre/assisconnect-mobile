@@ -1,5 +1,5 @@
 // server/src/services/authService.js
-import admin from "../config/firebase.js";
+import { admin } from "../config/firebase.js";
 import nodemailer from "nodemailer";
 
 const db = admin.firestore();
