@@ -1,7 +1,7 @@
 import { db } from "../config/firebase.js";
 import PessoaIdosaModel from "../models/elder.model.js";
 
-const COLLECTION = "pessoaidosa";
+const COLLECTION = "pessoaIdosa";
 
 const elderService = {
   async getAll() {
@@ -37,4 +37,3 @@ const elderService = {
 };
 
 export default elderService;
-// s
