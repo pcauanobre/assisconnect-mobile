@@ -1,4 +1,4 @@
-// client/screens/Home/HomeScreen.js
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   SafeAreaView,
