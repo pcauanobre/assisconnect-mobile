@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import {
   SafeAreaView,
@@ -224,22 +223,6 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navActive}>
-          <Feather name="home" size={22} color={colors.accent} />
-          <Text style={styles.navActiveText}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Feather name="plus-circle" size={22} color={colors.mutedText} />
-          <Text style={styles.navText}>Atividades</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Feather name="user" size={22} color={colors.mutedText} />
-          <Text style={styles.navText}>Perfil</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -344,22 +327,4 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
   },
   callText: { color: "#fff", marginLeft: 6, fontWeight: "bold", fontSize: 15 },
-
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 85,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-  },
-  navItem: { alignItems: "center" },
-  navText: { fontSize: 12, color: colors.mutedText, marginTop: 3 },
-  navActive: { alignItems: "center", borderTopWidth: 3, borderTopColor: colors.accent, paddingTop: 4 },
-  navActiveText: { fontSize: 12, color: colors.accent, fontWeight: "700", marginTop: 3 },
 });
