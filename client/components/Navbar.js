@@ -27,7 +27,7 @@ export default function Navbar({ navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const isActive = (key) => {
-    if (key === "Perfil") return current === "PerfilResponsavel" || current === "Idoso";
+    if (key === "Perfil") return current === "PerfilResponsavel" || current === "PerfilIdoso";
     return current === key;
   };
 
@@ -88,27 +88,39 @@ export default function Navbar({ navigation }) {
             style={[styles.popoverWrap, { bottom: NAV_HEIGHT + 8, opacity: fadeAnim }]}
           >
             <View style={styles.popover}>
-              <Pressable
-                style={styles.popItem}
-                onPress={() => {
-                  setMenuOpen(false);
-                  navigation.navigate("Idoso");
-                }}
-              >
-                <Ionicons name="person-outline" size={22} color={COLORS.text} />
-                <Text style={styles.popText}>Idoso</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.popItem}
-                onPress={() => {
-                  setMenuOpen(false);
-                  navigation.navigate("PerfilResponsavel");
-                }}
-              >
-                <Ionicons name="person-outline" size={22} color={COLORS.text} />
-                <Text style={styles.popText}>Meu Perfil</Text>
-              </Pressable>
+              {[
+                { label: "Idoso", route: "PerfilIdoso", icon: "people-outline" }, // 👥 alterado
+                { label: "Meu Perfil", route: "PerfilResponsavel", icon: "person-outline" },
+              ].map((item) => {
+                const isCurrent = current === item.route;
+                return (
+                  <Pressable
+                    key={item.label}
+                    style={[
+                      styles.popItem,
+                      isCurrent && { backgroundColor: COLORS.brown },
+                    ]}
+                    onPress={() => {
+                      setMenuOpen(false);
+                      navigation.navigate(item.route);
+                    }}
+                  >
+                    <Ionicons
+                      name={item.icon}
+                      size={22}
+                      color={isCurrent ? COLORS.bg : COLORS.text}
+                    />
+                    <Text
+                      style={[
+                        styles.popText,
+                        { color: isCurrent ? COLORS.bg : COLORS.text },
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </Animated.View>
         )}
@@ -143,19 +155,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: COLORS.bg,
   },
-
-  // 🔥 cada ativo separado pra brincar à vontade
-  itemActive1: {
-    backgroundColor: COLORS.brown,
-    // exemplo: borda arredondada esquerda
-  },
-  itemActive2: {
-    backgroundColor: COLORS.brown,
-    // exemplo: borda sem canto (meio)
-  },
-  itemActive3: {
-    backgroundColor: COLORS.brown,
-  },
+  // estilos ativos
+  itemActive1: { backgroundColor: COLORS.brown },
+  itemActive2: { backgroundColor: COLORS.brown },
+  itemActive3: { backgroundColor: COLORS.brown },
 
   icon: { marginBottom: 2 },
   label: { fontSize: 13, fontWeight: "600" },

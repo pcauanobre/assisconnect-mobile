@@ -9,6 +9,7 @@ import LoginCPFScreen from "../screens/Login/LoginCPFScreen";
 import LoginEmailScreen from "../screens/Login/LoginEmailScreen";
 import HomeScreen from "../screens/Home/HomeScreen";
 import PerfilResponsavelScreen from "../screens/Perfil/PerfilResponsavelScreen";
+import PerfilIdoso from '../screens/Perfil/PerfilIdoso'
 
 // Navbar
 import Navbar, { NAV_HEIGHT } from "../components/Navbar";
@@ -92,6 +93,7 @@ export default function AppNavigator() {
       {/* Com Navbar fixa (+ barra preta opcional abaixo) */}
       <Stack.Screen name="Home" component={withNavbar(HomeScreen)} />
       <Stack.Screen name="PerfilResponsavel" component={withNavbar(PerfilResponsavelScreen)} />
+      <Stack.Screen name="PerfilIdoso" component={withNavbar(PerfilIdoso)} />
     </Stack.Navigator>
   );
 }
