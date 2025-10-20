@@ -10,8 +10,9 @@
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
-    "express": "^4.19.2",
+    "express": "^4.21.2",
     "firebase-admin": "^13.5.0",
+    "joi": "^17.13.3",
     "nodemailer": "^7.0.6"
   },
   "devDependencies": {
