@@ -10,7 +10,7 @@ const COLORS = {
   brown: "#3A1F0F",
   text: "#4b2e1e",
   bg: "#FFFFFF",
-  surface: "#FFF6ED",
+  surface: "#FFFFFF",    // <<< branco (antes era bege)
   stroke: "#EDE9E4",
 };
 
@@ -89,7 +89,7 @@ export default function Navbar({ navigation }) {
           >
             <View style={styles.popover}>
               {[
-                { label: "Idoso", route: "PerfilIdoso", icon: "people-outline" }, // 👥 alterado
+                { label: "Pessoa Idosa", route: "PerfilIdoso", icon: "people-outline" },
                 { label: "Meu Perfil", route: "PerfilResponsavel", icon: "person-outline" },
               ].map((item) => {
                 const isCurrent = current === item.route;
@@ -131,7 +131,7 @@ export default function Navbar({ navigation }) {
 
 const styles = StyleSheet.create({
   barWrap: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'transparent', // <<< sem cor de fundo extra
   },
   barCard: {
     height: NAV_HEIGHT,
@@ -155,7 +155,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: COLORS.bg,
   },
-  // estilos ativos
   itemActive1: { backgroundColor: COLORS.brown },
   itemActive2: { backgroundColor: COLORS.brown },
   itemActive3: { backgroundColor: COLORS.brown },

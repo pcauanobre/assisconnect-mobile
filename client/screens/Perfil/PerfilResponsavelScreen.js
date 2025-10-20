@@ -11,6 +11,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+// ⬇️ Header igual ao das outras telas
+import Appheader from "../../components/Appheader";
+
 export default function PerfilResponsavelScreen() {
   const scrollRef = useRef(null);
 
@@ -38,6 +41,9 @@ export default function PerfilResponsavelScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      {/* Header com logo + título */}
+      <Appheader styles={appHeaderStyles} />
+
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.scrollContent}
@@ -136,13 +142,13 @@ export default function PerfilResponsavelScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#FFF6ED",
+    backgroundColor: "#FFF6ED", // fundo bege claro
   },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 16, // fixo e pequeno; sem variação por teclado
+    paddingBottom: 16,
   },
   titulo: {
     fontSize: 24,
@@ -283,5 +289,30 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 15,
+  },
+});
+
+/* Estilos usados pelo componente <Appheader /> */
+const appHeaderStyles = StyleSheet.create({
+  appHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: "#FAF7F2",          // barra clarinha atrás do logo/título
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2D8CF",
+  },
+  appLogo: {
+    width: 42,
+    height: 42,
+    marginRight: 10,
+    resizeMode: "contain",
+    borderRadius: 21,
+  },
+  appTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#3A2C1F",
   },
 });
