@@ -42,27 +42,28 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 10,
-    backgroundColor: "#F9F7F3",
+    backgroundColor: '#FFFFFF', // fundo branco total
+    borderRadius: 16,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     marginBottom: 15,
-    color: "#3A2C1F",
+    color: '#3A2C1F',
   },
   label: {
     fontSize: 14,
-    color: "#3A2C1F",
+    color: '#3A2C1F',
     marginBottom: 4,
   },
   personalInfoInput: {
-    backgroundColor: "#fff", // ou 'transparent' se quiser
+    backgroundColor: '#FFFFFF', // mantém branco dentro dos inputs também
     borderWidth: 1,
-    borderColor: "#CBBBA0",
+    borderColor: '#CBBBA0',
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginBottom: 12,
-    color: "#3A2C1F",
+    color: '#3A2C1F',
   },
 });
