@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, SafeAreaView, StyleSheet } from 'react-native';
 import colors from '../../styles/colors.js';
 
+//foi feito o revert da alteracao na HomeScreen
 export default function HomeScreen() {
   return (
     <SafeAreaView style={{flex:1, backgroundColor: colors.background}}>
