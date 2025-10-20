@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Pressable, StyleSheet, Platform, Animated } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform, Animated, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigationState } from "@react-navigation/native";
@@ -10,7 +10,7 @@ const COLORS = {
   brown: "#3A1F0F",
   text: "#4b2e1e",
   bg: "#FFFFFF",
-  surface: "#FFFFFF",    // <<< branco (antes era bege)
+  surface: "#FFFFFF",
   stroke: "#EDE9E4",
 };
 
@@ -45,7 +45,12 @@ export default function Navbar({ navigation }) {
       return;
     }
     setMenuOpen(false);
-    navigation.navigate(tab.route);
+    const routeNames = navigation?.getState?.()?.routeNames ?? [];
+    if (routeNames.includes(tab.route)) {
+      navigation.navigate(tab.route);
+    } else {
+      Alert.alert("Em breve", "A tela de Atividades ainda não está disponível.");
+    }
   };
 
   return (
@@ -96,10 +101,7 @@ export default function Navbar({ navigation }) {
                 return (
                   <Pressable
                     key={item.label}
-                    style={[
-                      styles.popItem,
-                      isCurrent && { backgroundColor: COLORS.brown },
-                    ]}
+                    style={[styles.popItem, isCurrent && { backgroundColor: COLORS.brown }]}
                     onPress={() => {
                       setMenuOpen(false);
                       navigation.navigate(item.route);
@@ -130,9 +132,7 @@ export default function Navbar({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  barWrap: {
-    backgroundColor: 'transparent', // <<< sem cor de fundo extra
-  },
+  barWrap: { backgroundColor: "transparent" },
   barCard: {
     height: NAV_HEIGHT,
     backgroundColor: COLORS.bg,
