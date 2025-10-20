@@ -5,13 +5,13 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
   FlatList,
   Modal,
   Image,
   Alert,
   StyleSheet,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome, FontAwesome5 } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { WebView } from 'react-native-webview';
@@ -25,7 +25,6 @@ import PersonalInfoForm from '../../components/PersonalInfoForm';
 // Assets
 import idosoImg from '../../assets/idoso.jpeg';
 import idosaImg from '../../assets/idosa.jpg';
-import logoAssisConnect from '../../assets/logo-assisconnect.png';
 import rgImg from '../../assets/rg.jpeg';
 import vacinaImg from '../../assets/vacina.png';
 import susImg from '../../assets/sus.webp';
@@ -126,10 +125,9 @@ export default function ElderProfileScreen() {
   };
 
   return (
-    // FUNDO ATRÁS DO BOTÃO = #FFF6ED
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF6ED' }}>
-      {/* Header fixo com logo */}
-      <Appheader logo={logoAssisConnect} styles={styles} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF6ED' }} edges={['top','left','right']}>
+      {/* Header fixo com logo (na área segura) */}
+      <Appheader styles={styles} />
 
       {/* Botão MARROM (fill) com texto BRANCO */}
       <TouchableOpacity style={topBtn.container} onPress={() => setLinkedModalVisible(true)}>
@@ -215,6 +213,8 @@ export default function ElderProfileScreen() {
               )}
               ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
               showsVerticalScrollIndicator={false}
+              scrollEnabled={false}
+              nestedScrollEnabled
             />
           </View>
         )}
