@@ -30,7 +30,7 @@ Thumbs.db
 .env.*.local
 
 # firebase credenciais
-server/src/config/firebase-key.json
+server/firebase-key.json
 
 # logs
 logs/
