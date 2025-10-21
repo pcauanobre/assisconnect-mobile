@@ -12,36 +12,403 @@ import {
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Calendar, LocaleConfig } from "react-native-calendars";
 import colors from "../../styles/colors";
 import Appheader from "../../components/Appheader";
-import idosoImg from "../../assets/idoso.jpeg"; // foto local do idoso
+import idosoImg from "../../assets/idoso.jpeg";
 
-// --- Mock do banco de dados ---
-const getDashboardDataAPI = () => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        humor: 2,
-        date: new Date("2025-02-04T12:00:00"),
-        presence: "Confirmada",
-        responsibleStaff: "Marina",
-        lastSync: new Date(),
-        phone: "+55 (85) 99888-7766",
-        medications: [
-          "Losartana 50mg - 08:00",
-          "Atenolol 25mg - 12:00",
-          "Vitamina D - 13:00",
-        ],
-        food: "Almoçou bem, comeu toda a refeição, incluindo a sobremesa.",
-        comments:
-          "Participou ativamente da aula de zumba e interagiu com os colegas.",
-      });
-    }, 1000);
-  });
+// 🔗 Firestore
+import { db } from "../../services/firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
+
+// ===== Helpers =====
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const tsToDate = (v) => (v?.toDate ? v.toDate() : v instanceof Date ? v : null);
+const addDaysISO = (iso, n) => {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
 };
 
-// Card compacto de info
+// Locale PT-BR para o calendário
+LocaleConfig.locales["pt-br"] = {
+  monthNames: [
+    "janeiro","fevereiro","março","abril","maio","junho",
+    "julho","agosto","setembro","outubro","novembro","dezembro",
+  ],
+  monthNamesShort: ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"],
+  dayNames: ["domingo","segunda","terça","quarta","quinta","sexta","sábado"],
+  dayNamesShort: ["dom","seg","ter","qua","qui","sex","sáb"],
+  today: "Hoje",
+};
+LocaleConfig.defaultLocale = "pt-br";
+
+// Emojis de humor (5 → 😀 ... 1 → 😡)
+const humorFaces = [
+  { emoji: "😀", color: "#6EBE63" }, // 5
+  { emoji: "😊", color: "#A5CE63" }, // 4
+  { emoji: "😐", color: "#F0C24B" }, // 3
+  { emoji: "☹️", color: "#E88B49" }, // 2
+  { emoji: "😡", color: "#E84949" }, // 1
+];
+
+// ❤️ marrom unificado
+const BROWN = "#3A1F0F";
+
+export default function HomeScreen({ navigation }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const [dashboardData, setDashboardData] = useState(null);
+
+  // Data selecionada (padrão: hoje)
+  const [dateISO, setDateISO] = useState(todayISO());
+  const [dateModalOpen, setDateModalOpen] = useState(false);
+
+  // Flag para indicar ausência de rotina
+  const [noRoutine, setNoRoutine] = useState(false);
+
+  // Modais extras
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [visitOpen, setVisitOpen] = useState(false);
+  const [callOpen, setCallOpen] = useState(false);
+  const [whatsOpen, setWhatsOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+
+  const loadData = useCallback(async (forcedISO) => {
+    try {
+      const useISO = forcedISO ?? dateISO;
+      const raw = await AsyncStorage.getItem("session");
+      const session = raw ? JSON.parse(raw) : null;
+      const cpf = session?.cpf;
+      if (!cpf) {
+        Alert.alert("Sessão inválida", "Entre novamente para carregar seus dados.");
+        navigation?.replace?.("LoginCPF");
+        return;
+      }
+
+      // pessoaIdosa/{cpf}
+      const pessoaRef = doc(db, "pessoaIdosa", String(cpf));
+      const pessoaSnap = await getDoc(pessoaRef);
+      if (!pessoaSnap.exists()) {
+        Alert.alert("Atenção", "Cadastro não encontrado.");
+        return;
+      }
+      const pessoa = pessoaSnap.data() || {};
+      const photoUrl = pessoa?.fotoUrl || null;
+
+      // pessoaIdosa/{cpf}/dias/{YYYY-MM-DD}
+      const diaRef = doc(db, `pessoaIdosa/${cpf}/dias/${useISO}`);
+      const diaSnap = await getDoc(diaRef);
+
+      if (!diaSnap.exists()) {
+        // Sem registro para a data → não abre modal, apenas marca ausência e mostra placeholders
+        setNoRoutine(true);
+        setDashboardData({
+          date: new Date(`${useISO}T12:00:00`),
+          humorLevel: 3,
+          presence: "-----------",
+          responsibleStaff: "-----------",
+          lastSync: null,
+          phone: "-----------",
+          medications: ["-----------"],
+          food: "-----------",
+          comments: "-----------",
+          photoUrl,
+        });
+        return;
+      }
+
+      const dia = diaSnap.data() || {};
+      const medications =
+        (dia.medicamentosDia || [])
+          .map((m) => {
+            const nome = (m?.nome || "").trim();
+            const dose = (m?.dose || "").trim();
+            const horario = (m?.horario || "").trim();
+            const left = [nome, dose].filter(Boolean).join(" ");
+            return [left, horario].filter(Boolean).join(" - ");
+          }) || [];
+
+      const food = dia.alimentacao || "-----------";
+      const comments = dia.comentarios || "-----------";
+      const phone = pessoa?.contato?.telefone || "-----------";
+      const presence = dia.presenca || "-----------";
+      const responsibleStaff = dia.responsavelDoDia || "-----------";
+      const lastSync = tsToDate(dia.ultimaSync) || null;
+      const humorLevel = Math.min(5, Math.max(1, Number(dia.humorNivel || 3)));
+
+      setNoRoutine(false);
+      setDashboardData({
+        humorLevel,
+        date: new Date(`${useISO}T12:00:00`),
+        presence,
+        responsibleStaff,
+        lastSync,
+        phone,
+        medications: medications.length ? medications : ["-----------"],
+        food,
+        comments,
+        photoUrl,
+      });
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Erro", "Não foi possível carregar as informações.");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dateISO, navigation]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
+
+  const manualReload = () => {
+    setRefreshing(true);
+    loadData();
+  };
+
+  const formattedDate =
+    dashboardData?.date
+      ?.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
+      .replace(".", "") ?? "—";
+
+  const lastSyncStr =
+    dashboardData?.lastSync
+      ? dashboardData.lastSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+      : "—";
+
+  // índice visual do humor
+  const selectedIdx = 5 - (dashboardData?.humorLevel ?? 3);
+
+  // escolher data no calendário
+  const selectDate = (iso) => {
+    setDateISO(iso);
+    setDateModalOpen(false);
+    setRefreshing(true);
+    loadData(iso);
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <Appheader styles={appHeaderStyles} />
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Barra de topo */}
+        <View style={styles.topbar}>
+          <TouchableOpacity onPress={() => setLogoutOpen(true)} style={styles.iconBtn}>
+            <Feather name="log-out" size={22} color={colors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setSettingsOpen(true)} style={styles.iconBtn}>
+            <Feather name="settings" size={22} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Seletor de Data (sem setas) */}
+        <View style={styles.dateRowColumn}>
+          <TouchableOpacity
+            style={styles.dateIconOnly}
+            onPress={() => setDateModalOpen(true)}
+            accessibilityLabel="Escolher data"
+          >
+            <Feather name="calendar" size={18} color={BROWN} />
+          </TouchableOpacity>
+          {noRoutine && (
+            <Text style={styles.noRoutineCaption}>Não há rotina para esta data</Text>
+          )}
+          {/* Mostra a data formatada atual abaixo (opcional) */}
+          <Text style={styles.currentDateText}>{formattedDate}</Text>
+        </View>
+
+
+        {/* Perfil */}
+        <View style={styles.profileSection}>
+          <Image
+            source={dashboardData?.photoUrl ? { uri: dashboardData.photoUrl } : idosoImg}
+            style={styles.avatar}
+          />
+          <Text style={styles.greeting}>Olá, Família!</Text>
+        </View>
+
+        {/* Humor */}
+        <View style={styles.humorCard}>
+          <Text style={styles.humorTitle}>Humor do Dia</Text>
+          <View style={styles.humorRow}>
+            {humorFaces.map((face, i) => {
+              const isSelected = i === selectedIdx;
+              return (
+                <View key={i} style={styles.humorItem}>
+                  {isSelected && <View pointerEvents="none" style={styles.humorRing} />}
+                  <View style={[styles.humorCircle, { backgroundColor: face.color }]}>
+                    <Text style={styles.humorEmoji}>{face.emoji}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Infos */}
+        <InfoCard text="Presença: " boldText={dashboardData?.presence ?? "-----------"} />
+        <InfoCard text="Responsável do Dia: " boldText={dashboardData?.responsibleStaff ?? "-----------"} />
+
+        <InfoCard
+          text="Última sinc. às: "
+          boldText={lastSyncStr}
+          rightAccessory={
+            <TouchableOpacity onPress={manualReload} style={styles.reloadBtn} accessibilityLabel="Recarregar dados">
+              <Feather name="refresh-cw" size={16} color="#fff" />
+            </TouchableOpacity>
+          }
+        />
+
+        {/* Acordeões */}
+        <Accordion title="Medicamentos do Dia">
+          {(dashboardData?.medications ?? ["-----------"]).map((item, i) => (
+            <Text key={i} style={styles.accordionText}>• {item}</Text>
+          ))}
+        </Accordion>
+
+        <Accordion title="Alimentação do Dia">
+          <Text style={styles.accordionText}>{dashboardData?.food ?? "-----------"}</Text>
+        </Accordion>
+
+        <Accordion title="Comentários do Dia">
+          <Text style={styles.accordionText}>{dashboardData?.comments ?? "-----------"}</Text>
+        </Accordion>
+
+        {/* Botões */}
+        <TouchableOpacity style={styles.mainButton} onPress={() => setVisitOpen(true)}>
+          <Text style={styles.mainButtonText}>Agendar Visita</Text>
+        </TouchableOpacity>
+
+        <View style={styles.actionsRow}>
+          <TouchableOpacity style={styles.callButton} onPress={() => setCallOpen(true)}>
+            <Feather name="phone" size={16} color="#fff" />
+            <Text style={styles.callText}>Ligar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.callButton} onPress={() => setWhatsOpen(true)}>
+            <MaterialCommunityIcons name="whatsapp" size={18} color="#fff" />
+            <Text style={styles.callText}>WhatsApp</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* === Modal: Calendário === */}
+      <Modal visible={dateModalOpen} transparent animationType="fade" onRequestClose={() => setDateModalOpen(false)}>
+        <View style={overlayStyles.overlay}>
+          <View style={modalCardStyles.card}>
+            <Text style={modalCardStyles.title}>Escolher Data</Text>
+            <Text style={modalCardStyles.subtitle}>Toque em uma data no calendário</Text>
+
+            <Calendar
+              initialDate={dateISO}
+              onDayPress={(day) => selectDate(day.dateString)}
+              markedDates={{
+                [dateISO]: { selected: true, selectedColor: BROWN, selectedTextColor: "#fff" },
+              }}
+              theme={{
+                textDayFontWeight: "600",
+                textMonthFontWeight: "700",
+                textDayHeaderFontWeight: "600",
+                arrowColor: BROWN,
+                monthTextColor: BROWN,
+                selectedDayBackgroundColor: BROWN,
+              }}
+              style={calendarStyles.calendar}
+            />
+
+            <View style={modalCardStyles.actions}>
+              <TouchableOpacity
+                style={outlinedBtnSmall.container}
+                onPress={() => selectDate(todayISO())}
+              >
+                <Text style={outlinedBtnSmall.text}>Hoje ({todayISO()})</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={primaryBtn.centered} onPress={() => setDateModalOpen(false)}>
+                <Text style={primaryBtn.text}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* === Modais padrões === */}
+      <SimpleModal
+        visible={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title="Configurações"
+        subtitle="Ajustes da sua experiência."
+        rows={[
+          { icon: "bell", label: "Notificações" },
+          { icon: "shield", label: "Privacidade" },
+          { icon: "users", label: "Vincular outro idoso" },
+          { icon: "moon", label: "Tema (claro/escuro)" },
+          { icon: "info", label: "Sobre o AssisConnect" },
+          { icon: "help-circle", label: "Ajuda" },
+        ]}
+      />
+
+      <ConfirmModal
+        visible={visitOpen}
+        onCancel={() => setVisitOpen(false)}
+        onConfirm={() => {
+          setVisitOpen(false);
+          Alert.alert("Agendamento", `Visita agendada com sucesso para ${formattedDate}!`);
+        }}
+        title="Agendar Visita"
+        subtitle={`Em breve: escolha data/horário. Por ora, confirme o agendamento para ${formattedDate}.`}
+      />
+
+      <ConfirmModal
+        visible={callOpen}
+        onCancel={() => setCallOpen(false)}
+        onConfirm={() => {
+          setCallOpen(false);
+          Alert.alert("Telefone", `Iniciando ligação para ${dashboardData?.phone ?? "-----------"}...`);
+        }}
+        title="Ligar agora?"
+        subtitle={`Confirmar ligação para ${dashboardData?.phone ?? "-----------"}.`}
+      />
+
+      <ConfirmModal
+        visible={whatsOpen}
+        onCancel={() => setWhatsOpen(false)}
+        onConfirm={() => {
+          setWhatsOpen(false);
+          Alert.alert("WhatsApp", `Abrindo WhatsApp para ${dashboardData?.phone ?? "-----------"}...`);
+        }}
+        title="Abrir WhatsApp?"
+        subtitle={`Vamos abrir uma conversa com ${dashboardData?.phone ?? "-----------"}.`}
+      />
+
+      <ConfirmModal
+        visible={logoutOpen}
+        onCancel={() => setLogoutOpen(false)}
+        onConfirm={() => {
+          setLogoutOpen(false);
+          AsyncStorage.removeItem("session");
+          navigation?.replace?.("LoginCPF");
+        }}
+        title="Sair do AssisConnect?"
+        subtitle="Você poderá entrar novamente a qualquer momento."
+        confirmText="Sair"
+      />
+    </SafeAreaView>
+  );
+}
+
+// ====== Auxiliares ======
 const InfoCard = ({ text, boldText, iconName, isButton, onPress, rightAccessory }) => (
   <TouchableOpacity
     style={styles.infoCard}
@@ -62,7 +429,6 @@ const InfoCard = ({ text, boldText, iconName, isButton, onPress, rightAccessory 
   </TouchableOpacity>
 );
 
-// Acordeão simples
 const Accordion = ({ title, children }) => {
   const [expanded, setExpanded] = useState(false);
   return (
@@ -76,350 +442,107 @@ const Accordion = ({ title, children }) => {
   );
 };
 
-export default function HomeScreen({ navigation }) {
-  const [refreshing, setRefreshing] = useState(false);
-  const [dashboardData, setDashboardData] = useState(null);
-
-  // Modais
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [visitOpen, setVisitOpen] = useState(false);
-  const [callOpen, setCallOpen] = useState(false);
-  const [whatsOpen, setWhatsOpen] = useState(false);
-  const [logoutOpen, setLogoutOpen] = useState(false);
-
-  const humorFaces = [
-    { emoji: "😀", color: "#6EBE63" },
-    { emoji: "😊", color: "#A5CE63" },
-    { emoji: "😐", color: "#F0C24B" },
-    { emoji: "☹️", color: "#E88B49" },
-    { emoji: "😡", color: "#E84949" },
-  ];
-
-  // Carrega dados: na entrada da tela (sem mostrar animação de refresh)
-  const loadData = useCallback(async () => {
-    try {
-      const data = await getDashboardDataAPI();
-      setDashboardData(data);
-    } catch {
-      Alert.alert("Erro", "Não foi possível carregar as informações.");
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData(); // carrega ao entrar, sem mexer em `refreshing`
-  }, [loadData]);
-
-  // Pull-to-refresh (mostra spinner só quando o usuário puxa)
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadData();
-  };
-
-  // Botão “reload” ao lado da Última sinc.
-  const manualReload = () => {
-    setRefreshing(true);
-    loadData();
-  };
-
-  const formattedDate =
-    dashboardData?.date
-      ?.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
-      .replace(".", "") ?? "—";
-
-  const lastSyncStr =
-    dashboardData?.lastSync
-      ? dashboardData.lastSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-      : "—";
-
-  return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      {/* Header com logo (na área segura) */}
-      <Appheader styles={appHeaderStyles} />
-
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Topbar: esquerda = logout | direita = engrenagem */}
-        <View style={styles.topbar}>
-          <TouchableOpacity onPress={() => setLogoutOpen(true)} style={styles.iconBtn}>
-            <Feather name="log-out" size={22} color={colors.text} />
+const SimpleModal = ({ visible, onClose, title, subtitle, rows = [] }) => (
+  <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <View style={overlayStyles.overlay}>
+      <View style={modalCardStyles.card}>
+        <Text style={modalCardStyles.title}>{title}</Text>
+        <Text style={modalCardStyles.subtitle}>{subtitle}</Text>
+        {rows.map((item) => (
+          <TouchableOpacity key={item.label} style={modalCardStyles.rowItem}>
+            <Feather name={item.icon} size={18} color={colors.text} />
+            <Text style={modalCardStyles.rowText}>{item.label}</Text>
           </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => setSettingsOpen(true)} style={styles.iconBtn}>
-            <Feather name="settings" size={22} color={colors.text} />
+        ))}
+        <View style={modalCardStyles.actions}>
+          <TouchableOpacity style={outlinedBtnSmall.container} onPress={onClose}>
+            <Text style={outlinedBtnSmall.text}>Fechar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={primaryBtn.centered} onPress={onClose}>
+            <Text style={primaryBtn.text}>Salvar</Text>
           </TouchableOpacity>
         </View>
+      </View>
+    </View>
+  </Modal>
+);
 
-        {/* Perfil/mensagem (avatar com a foto local do idoso) */}
-        <View style={styles.profileSection}>
-          <Image source={idosoImg} style={styles.avatar} />
-          <Text style={styles.greeting}>Olá, Família!</Text>
-        </View>
-
-        {/* Humor do dia */}
-        <View style={styles.humorCard}>
-          <Text style={styles.humorTitle}>Humor do Dia</Text>
-          <View style={styles.humorRow}>
-            {humorFaces.map((face, i) => {
-              const isHappy = face.emoji === "😀"; // destaque na carinha feliz
-              return (
-                <View
-                  key={i}
-                  style={[
-                    styles.humorCircle,
-                    { backgroundColor: face.color },
-                    isHappy && { borderWidth: 2, borderColor: colors.primary },
-                  ]}
-                >
-                  <Text style={styles.humorEmoji}>{face.emoji}</Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Infos resumidas */}
-        <InfoCard iconName="calendar" text={formattedDate} />
-        <InfoCard text="Presença: " boldText={dashboardData?.presence ?? "—"} />
-        <InfoCard text="Responsável do Dia: " boldText={dashboardData?.responsibleStaff ?? "—"} />
-
-        {/* “Última sinc.” + botão de reload ao lado */}
-        <InfoCard
-          text="Última sinc. às: "
-          boldText={lastSyncStr}
-          rightAccessory={
-            <TouchableOpacity onPress={manualReload} style={styles.reloadBtn} accessibilityLabel="Recarregar dados">
-              <Feather name="refresh-cw" size={16} color="#fff" />
-            </TouchableOpacity>
-          }
-        />
-
-        {/* Acordeões */}
-        <Accordion title="Medicamentos do Dia">
-          {(dashboardData?.medications ?? ["—"]).map((item, i) => (
-            <Text key={i} style={styles.accordionText}>• {item}</Text>
-          ))}
-        </Accordion>
-
-        <Accordion title="Alimentação do Dia">
-          <Text style={styles.accordionText}>{dashboardData?.food ?? "—"}</Text>
-        </Accordion>
-
-        <Accordion title="Comentários do Dia">
-          <Text style={styles.accordionText}>{dashboardData?.comments ?? "—"}</Text>
-        </Accordion>
-
-        {/* Botão principal */}
-        <TouchableOpacity style={styles.mainButton} onPress={() => setVisitOpen(true)}>
-          <Text style={styles.mainButtonText}>Agendar Visita</Text>
-        </TouchableOpacity>
-
-        {/* Ações rápidas */}
-        <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.callButton} onPress={() => setCallOpen(true)}>
-            <Feather name="phone" size={16} color="#fff" />
-            <Text style={styles.callText}>Ligar</Text>
+const ConfirmModal = ({ visible, onCancel, onConfirm, title, subtitle, confirmText = "Confirmar" }) => (
+  <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <View style={overlayStyles.overlay}>
+      <View style={modalCardStyles.card}>
+        <Text style={modalCardStyles.title}>{title}</Text>
+        <Text style={modalCardStyles.subtitle}>{subtitle}</Text>
+        <View style={modalCardStyles.actions}>
+          <TouchableOpacity style={outlinedBtnSmall.container} onPress={onCancel}>
+            <Text style={outlinedBtnSmall.text}>Cancelar</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.callButton} onPress={() => setWhatsOpen(true)}>
-            <MaterialCommunityIcons name="whatsapp" size={18} color="#fff" />
-            <Text style={styles.callText}>WhatsApp</Text>
+          <TouchableOpacity style={primaryBtn.centered} onPress={onConfirm}>
+            <Text style={primaryBtn.text}>{confirmText}</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
+    </View>
+  </Modal>
+);
 
-      {/** ======================
-       * MODAIS
-       * ======================= */}
-
-      {/* Modal: Configurações (sem “Sair”) */}
-      <Modal
-        visible={settingsOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSettingsOpen(false)}
-      >
-        <View style={overlayStyles.overlay}>
-          <View style={modalCardStyles.card}>
-            <Text style={modalCardStyles.title}>Configurações</Text>
-            <Text style={modalCardStyles.subtitle}>Ajustes da sua experiência.</Text>
-
-            {[
-              { icon: "bell", label: "Notificações" },
-              { icon: "shield", label: "Privacidade" },
-              { icon: "users", label: "Vincular outro idoso" },
-              { icon: "moon", label: "Tema (claro/escuro)" },
-              { icon: "info", label: "Sobre o AssisConnect" },
-              { icon: "help-circle", label: "Ajuda" },
-            ].map((item) => (
-              <TouchableOpacity key={item.label} style={modalCardStyles.rowItem}>
-                <Feather name={item.icon} size={18} color={colors.text} />
-                <Text style={modalCardStyles.rowText}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-
-            <View style={modalCardStyles.actions}>
-              <TouchableOpacity style={outlinedBtnSmall.container} onPress={() => setSettingsOpen(false)}>
-                <Text style={outlinedBtnSmall.text}>Fechar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={primaryBtn.centered} onPress={() => setSettingsOpen(false)}>
-                <Text style={primaryBtn.text}>Salvar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal: Agendar Visita */}
-      <Modal
-        visible={visitOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setVisitOpen(false)}
-      >
-        <View style={overlayStyles.overlay}>
-          <View style={modalCardStyles.card}>
-            <Text style={modalCardStyles.title}>Agendar Visita</Text>
-            <Text style={modalCardStyles.subtitle}>
-              Em breve: escolha data/horário. Por ora, confirme o agendamento.
-            </Text>
-
-            <View style={modalCardStyles.rowItem}>
-              <Feather name="calendar" size={18} color={colors.text} />
-              <Text style={modalCardStyles.rowText}>Data sugerida: {formattedDate}</Text>
-            </View>
-
-            <View style={modalCardStyles.actions}>
-              <TouchableOpacity style={outlinedBtnSmall.container} onPress={() => setVisitOpen(false)}>
-                <Text style={outlinedBtnSmall.text}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={primaryBtn.centered}
-                onPress={() => {
-                  setVisitOpen(false);
-                  Alert.alert("Agendamento", "Visita agendada com sucesso!");
-                }}
-              >
-                <Text style={primaryBtn.text}>Confirmar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal: Ligar */}
-      <Modal
-        visible={callOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setCallOpen(false)}
-      >
-        <View style={overlayStyles.overlay}>
-          <View style={modalCardStyles.card}>
-            <Text style={modalCardStyles.title}>Ligar agora?</Text>
-            <Text style={modalCardStyles.subtitle}>Confirmar ligação para {dashboardData?.phone ?? "—"}.</Text>
-
-            <View style={modalCardStyles.actions}>
-              <TouchableOpacity style={outlinedBtnSmall.container} onPress={() => setCallOpen(false)}>
-                <Text style={outlinedBtnSmall.text}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={primaryBtn.centered}
-                onPress={() => {
-                  setCallOpen(false);
-                  Alert.alert("Telefone", `Iniciando ligação para ${dashboardData?.phone ?? "—"}...`);
-                }}
-              >
-                <Text style={primaryBtn.text}>Ligar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal: WhatsApp */}
-      <Modal
-        visible={whatsOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setWhatsOpen(false)}
-      >
-        <View style={overlayStyles.overlay}>
-          <View style={modalCardStyles.card}>
-            <Text style={modalCardStyles.title}>Abrir WhatsApp?</Text>
-            <Text style={modalCardStyles.subtitle}>Vamos abrir uma conversa com {dashboardData?.phone ?? "—"}.</Text>
-
-            <View style={modalCardStyles.actions}>
-              <TouchableOpacity style={outlinedBtnSmall.container} onPress={() => setWhatsOpen(false)}>
-                <Text style={outlinedBtnSmall.text}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={primaryBtn.centered}
-                onPress={() => {
-                  setWhatsOpen(false);
-                  Alert.alert("WhatsApp", `Abrindo WhatsApp para ${dashboardData?.phone ?? "—"}...`);
-                }}
-              >
-                <Text style={primaryBtn.text}>Abrir</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal: Sair (topo esquerdo) */}
-      <Modal
-        visible={logoutOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setLogoutOpen(false)}
-      >
-        <View style={overlayStyles.overlay}>
-          <View style={modalCardStyles.card}>
-            <Text style={modalCardStyles.title}>Sair do AssisConnect?</Text>
-            <Text style={modalCardStyles.subtitle}>Você poderá entrar novamente a qualquer momento.</Text>
-
-            <View style={modalCardStyles.actions}>
-              <TouchableOpacity style={outlinedBtnSmall.container} onPress={() => setLogoutOpen(false)}>
-                <Text style={outlinedBtnSmall.text}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={primaryBtn.centered}
-                onPress={() => {
-                  setLogoutOpen(false);
-                  navigation?.replace?.("LoginCPF");
-                }}
-              >
-                <Text style={primaryBtn.text}>Sair</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
-  );
-}
-
-/** =========================
- * Estilos
- * ========================= */
+// ===== Estilos =====
+const RING_OFFSET = 6;
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  // menos padding no fim pra tirar o espaço em branco
   scroll: { paddingHorizontal: 20, paddingBottom: 80 },
 
   topbar: {
     marginTop: 10,
-    marginBottom: 2,
+    marginBottom: 6,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   iconBtn: { padding: 6, borderRadius: 10 },
+
+  /* Date selector */
+  dateRowColumn: {
+    marginBottom: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dateIconOnly: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2D8CF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+  },
+  noRoutineCaption: {
+    marginTop: 6,
+    color: "#9A7F6B",
+    fontSize: 12,
+  },
+  currentDateText: {
+    marginTop: 2,
+    color: "#6B543F",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  noRoutineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF8F0",
+    borderColor: "#F1DEC9",
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  noRoutineBannerText: { color: "#6B543F", flex: 1 },
 
   profileSection: { alignItems: "center", marginTop: 10 },
   avatar: {
@@ -430,7 +553,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#DCC6B6",
   },
-  greeting: { fontSize: 22, fontWeight: "700", color: colors.text },
+  greeting: { fontSize: 22, fontWeight: "700", color: colors.text, textAlign: "center" },
 
   humorCard: {
     backgroundColor: colors.white,
@@ -439,20 +562,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginVertical: 8,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 5,
   },
   humorTitle: { fontSize: 14, color: colors.muted, marginBottom: 14 },
   humorRow: { flexDirection: "row", justifyContent: "space-between", width: "100%" },
+
+  humorItem: {
+    width: 42,
+    height: 42,
+    marginHorizontal: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "visible",
+  },
   humorCircle: {
     width: 42,
     height: 42,
     borderRadius: 21,
     justifyContent: "center",
     alignItems: "center",
+  },
+  humorRing: {
+    position: "absolute",
+    top: -RING_OFFSET,
+    left: -RING_OFFSET,
+    right: -RING_OFFSET,
+    bottom: -RING_OFFSET,
+    borderWidth: 3,
+    borderColor: BROWN,
+    borderRadius: 21 + RING_OFFSET,
   },
   humorEmoji: { fontSize: 22 },
 
@@ -465,11 +603,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 3,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -478,15 +611,10 @@ const styles = StyleSheet.create({
   infoCardContent: { flexDirection: "row", alignItems: "center" },
 
   reloadBtn: {
-    backgroundColor: colors.primary, // #4E342E
+    backgroundColor: BROWN,
     borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 3,
   },
 
   accordionHeader: {
@@ -500,11 +628,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 3,
   },
   accordionTitle: { color: colors.text, fontSize: 15, fontWeight: "700" },
   accordionBody: {
@@ -521,16 +644,11 @@ const styles = StyleSheet.create({
   accordionText: { color: colors.text, fontSize: 15, lineHeight: 22 },
 
   mainButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: BROWN,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 3,
   },
   mainButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 
@@ -543,22 +661,25 @@ const styles = StyleSheet.create({
   callButton: {
     flex: 1,
     flexDirection: "row",
-    backgroundColor: colors.primary,
+    backgroundColor: BROWN,
     borderRadius: 12,
     paddingVertical: 12,
     justifyContent: "center",
     alignItems: "center",
     marginHorizontal: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 3,
   },
   callText: { color: "#fff", marginLeft: 6, fontWeight: "bold", fontSize: 15 },
 });
 
-/** Header (Appheader) */
+const calendarStyles = StyleSheet.create({
+  calendar: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+});
+
 const appHeaderStyles = StyleSheet.create({
   appHeader: {
     flexDirection: "row",
@@ -573,7 +694,6 @@ const appHeaderStyles = StyleSheet.create({
   appTitle: { fontSize: 20, fontWeight: "700", color: "#3A2C1F" },
 });
 
-/** Modais */
 const overlayStyles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -590,11 +710,6 @@ const modalCardStyles = StyleSheet.create({
     width: "92%",
     borderRadius: 16,
     padding: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 6,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -615,21 +730,15 @@ const modalCardStyles = StyleSheet.create({
   actions: { marginTop: 8, flexDirection: "row", justifyContent: "space-between", gap: 10 },
 });
 
-/** Botões usados nos modais */
 const primaryBtn = StyleSheet.create({
   centered: {
-    backgroundColor: colors.primary, // marrom oficial
+    backgroundColor: BROWN,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 20,
     alignItems: "center",
     alignSelf: "flex-start",
     flexDirection: "row",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 3,
   },
   text: { color: "#fff", fontWeight: "bold" },
 });
@@ -637,12 +746,12 @@ const primaryBtn = StyleSheet.create({
 const outlinedBtnSmall = StyleSheet.create({
   container: {
     borderWidth: 1.5,
-    borderColor: colors.primary,
+    borderColor: BROWN,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 20,
     alignItems: "center",
     backgroundColor: "transparent",
   },
-  text: { color: colors.primary, fontWeight: "bold" },
+  text: { color: BROWN, fontWeight: "bold" },
 });

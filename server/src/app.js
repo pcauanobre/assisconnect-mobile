@@ -1,28 +1,30 @@
-// server/src/app.js
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import elderRoutes from  "./routes/elder.routes.js";
-
-// 🔹 Carrega variáveis do .env antes de qualquer outra coisa
 dotenv.config();
 
 import authRoutes from "./routes/authRoutes.js";
-// (Caso tenha outras rotas, você pode importá-las aqui)
+import elderRoutes from "./routes/elder.routes.js";
 
 const app = express();
-app.use(cors());
+
+// CORS + JSON
+app.use(cors({ origin: true }));
 app.use(express.json());
 
-const router = express.Router();
+// 🔎 Logger de TODAS as requisições
+app.use((req, res, next) => {
+  console.log(`➡️  ${req.method} ${req.originalUrl}`);
+  res.setHeader("X-Server", "assisconnect-local");
+  next();
+});
 
-// Healthcheck
-app.get("/api/v1/health", (req, res) => res.json({ ok: true }));
+// Health/ping
+app.get("/api/v1/health", (_req, res) => res.json({ ok: true }));
+app.get("/api/auth/ping", (_req, res) => res.json({ pong: true }));
 
-// Rotas de autenticação (CPF -> email)
+// Rotas
 app.use("/api/auth", authRoutes);
-
-// rotas do idoso
 app.use("/elder", elderRoutes);
 
 export default app;

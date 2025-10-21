@@ -4,7 +4,10 @@ import { startLogin, verifyCode } from "../controllers/authController.js";
 
 const router = express.Router();
 
-router.post("/start", startLogin);   // POST /api/auth/start
-router.post("/verify", verifyCode);  // POST /api/auth/verify
+// POST /api/auth/start  -> prepara login e dispara e-mail em background
+router.post("/start", startLogin);
+
+// POST /api/auth/verify -> valida o código
+router.post("/verify", verifyCode);
 
 export default router;

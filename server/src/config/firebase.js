@@ -4,7 +4,9 @@ import { readFileSync } from "fs";
 import admin from "firebase-admin";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const keyPath = join(__dirname, "firebase-key.json"); // caminho direto, sem ../../
+
+// ✅ A chave está na MESMA PASTA deste arquivo
+const keyPath = join(__dirname, "firebase-key.json");
 
 const serviceAccount = JSON.parse(readFileSync(keyPath, "utf-8"));
 
@@ -16,5 +18,3 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 export { db, admin };
-
-// mudei o diretorio da key

@@ -1,4 +1,3 @@
-// server/src/services/authService.js
 import { admin } from "../config/firebase.js";
 import nodemailer from "nodemailer";
 
@@ -14,13 +13,10 @@ function getSMTPConfig() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const from = process.env.EMAIL_FROM || user;
-
   return { host, port, user, pass, from };
 }
 
-function ensureTransporter() {
-  if (transporter) return transporter;
-
+async function createTransporter() {
   const { host, port, user, pass } = getSMTPConfig();
 
   if (!host || !user || !pass) {
@@ -34,19 +30,37 @@ function ensureTransporter() {
     throw new Error("SMTP não configurado (.env ausente ou incompleto).");
   }
 
-  transporter = nodemailer.createTransport({
+  const tx = nodemailer.createTransport({
     host,
     port,
-    secure: port === 465, // 587 STARTTLS, 465 SSL
+    secure: port === 465, // 465 = SSL; 587 = STARTTLS
     auth: { user, pass },
+    logger: true,
+    debug: true,
   });
 
+  try {
+    console.log("🔌 Verificando conexão SMTP…");
+    await tx.verify();
+    console.log("✅ SMTP pronto para enviar e-mails.");
+  } catch (err) {
+    console.error("❌ Falha ao verificar SMTP:", err?.message || err);
+    throw err;
+  }
+
+  return tx;
+}
+
+async function ensureTransporter() {
+  if (!transporter) transporter = await createTransporter();
   return transporter;
 }
 
 async function sendMail({ to, subject, text, html }) {
   const { from, host, port, user } = getSMTPConfig();
-  const tx = ensureTransporter();
+  const tx = await ensureTransporter();
+
+  console.log(`📨 [AUTH] Enviando e-mail para: ${to}`);
   const info = await tx.sendMail({ from, to, subject, text, html });
   console.log("📧 E-mail enviado:", info.messageId, "via", host, port, "as", user);
   return info;
@@ -57,11 +71,24 @@ function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+function isValidEmail(email) {
+  if (!email) return false;
+  const e = String(email).trim().toLowerCase();
+  if (!EMAIL_REGEX.test(e)) return false;
+
+  // Bloqueia domínios claramente incorretos/placeholder comuns
+  const badDomains = new Set(["email.com", "example.com", "test.com", "teste.com"]);
+  const domain = e.split("@")[1];
+  if (badDomains.has(domain)) return false;
+
+  return true;
+}
+
 // -------- Templates de e-mail --------
 function buildEmail(code) {
   const subject = "Seu código de acesso - AssisConnect";
-  const text =
-`Olá,
+  const text = `Olá,
 
 Recebemos um pedido de acesso ao AssisConnect.
 
@@ -96,7 +123,7 @@ Se você não solicitou este código, ignore este e-mail.`;
 
 // -------- Services --------
 
-// 1) Prepara login: verifica pessoa, gera e salva código, devolve e-mail + código (para envio posterior)
+// 1) Prepara login
 export const prepareLogin = async (cpf) => {
   console.log("🔎 Procurando pessoa com CPF:", cpf);
 
@@ -108,11 +135,21 @@ export const prepareLogin = async (cpf) => {
   }
 
   const pessoa = doc.data();
-  const email = pessoa.emailVinculado || pessoa.emailResponsavel || pessoa.email || null;
 
-  if (!email) {
-    console.log("❌ Nenhum e-mail cadastrado para:", cpf);
-    return { success: false, error: "E-mail não cadastrado" };
+  // Usa e-mail do responsável conforme sua coleção atual
+  const rawEmail =
+    pessoa?.responsavel?.email ||
+    pessoa?.emailVinculado ||
+    pessoa?.emailResponsavel ||
+    pessoa?.email ||
+    null;
+
+  const email = (rawEmail || "").trim().toLowerCase();
+
+  // ✅ Validação antes de tentar enviar
+  if (!isValidEmail(email)) {
+    console.log("❌ E-mail inválido no cadastro:", email || "(vazio)");
+    return { success: false, error: "E-mail do responsável inválido no cadastro" };
   }
 
   const code = generateCode();
@@ -123,11 +160,11 @@ export const prepareLogin = async (cpf) => {
     loginCodeExpiresAt: expiresAt,
   });
 
-  console.log("✅ Pessoa encontrada. Código gerado e salvo. E-mail:", email);
+  console.log("✅ Pessoa encontrada. Código gerado e salvo. E-mail destino:", email);
   return { success: true, email, code };
 };
 
-// 2) Envia o e-mail (pode ser chamado em background, após responder ao client)
+// 2) Envia o e-mail
 export const sendLoginEmail = async (email, code) => {
   console.log("📨 Agendando envio de e-mail para:", email);
   const { subject, text, html } = buildEmail(code);
