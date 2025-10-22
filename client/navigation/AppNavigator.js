@@ -9,7 +9,11 @@ import LoginCPFScreen from "../screens/Login/LoginCPFScreen";
 import LoginEmailScreen from "../screens/Login/LoginEmailScreen";
 import HomeScreen from "../screens/Home/HomeScreen";
 import PerfilResponsavelScreen from "../screens/Perfil/PerfilResponsavelScreen";
-import PerfilIdoso from '../screens/Perfil/PerfilIdoso'
+// ⬇️ Renomeado: antes "../screens/Perfil/PerfilIdoso"
+import PerfilPessoaIdosaScreen from "../screens/Perfil/PerfilPessoaIdosaScreen";
+
+// 🔧 NOVO: tela Admin
+import AdminScreen from "../screens/Admin/AdminScreen";
 
 // Navbar
 import Navbar, { NAV_HEIGHT } from "../components/Navbar";
@@ -18,7 +22,7 @@ const Stack = createNativeStackNavigator();
 
 // ====== FLAG e ALTURA DA BARRA PRETA ======
 const BARRA_PRETA = true;        // <<<<< altere para false para esconder
-const BLACK_BAR_HEIGHT = 50;           // ajuste se quiser mais/menos alto
+const BLACK_BAR_HEIGHT = 50;     // ajuste se quiser mais/menos alto
 // ==========================================
 
 // 🔧 Duração do auto-login (ms)
@@ -84,7 +88,8 @@ function withNavbar(ScreenComponent) {
 
 export default function AppNavigator() {
   return (
-    <Stack.Navigator initialRouteName="PerfilResponsavel" screenOptions={{ headerShown: false }}>
+    // ✅ Agora começa no AuthGate (antes estava "Admin")
+    <Stack.Navigator initialRouteName="Admin" screenOptions={{ headerShown: false }}>
       {/* Sem Navbar */}
       <Stack.Screen name="AuthGate" component={AuthGate} />
       <Stack.Screen name="LoginCPF" component={LoginCPFScreen} />
@@ -93,7 +98,20 @@ export default function AppNavigator() {
       {/* Com Navbar fixa (+ barra preta opcional abaixo) */}
       <Stack.Screen name="Home" component={withNavbar(HomeScreen)} />
       <Stack.Screen name="PerfilResponsavel" component={withNavbar(PerfilResponsavelScreen)} />
-      <Stack.Screen name="PerfilIdoso" component={withNavbar(PerfilIdoso)} />
+
+      {/* ✅ Rota nova */}
+      <Stack.Screen
+        name="PerfilPessoaIdosa"
+        component={withNavbar(PerfilPessoaIdosaScreen)}
+      />
+      {/* ✅ Alias da rota antiga para não quebrar navegações existentes */}
+      <Stack.Screen
+        name="PerfilIdoso"
+        component={withNavbar(PerfilPessoaIdosaScreen)}
+      />
+
+      {/* ✅ Tela Admin com Navbar */}
+      <Stack.Screen name="Admin" component={withNavbar(AdminScreen)} />
     </Stack.Navigator>
   );
 }
@@ -109,7 +127,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   navWrap: {
-    // height: NAV_HEIGHT, // ❌ não use altura fixa, pois precisamos somar a barra preta
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#ccc",
