@@ -2,7 +2,7 @@ import { admin } from "../config/firebase.js";
 import nodemailer from "nodemailer";
 
 const db = admin.firestore();
-const pessoasRef = db.collection("pessoaIdosa");
+const usuariosRef = db.collection("usuarios");
 
 // -------- SMTP helpers (lazy) --------
 let transporter = null;
@@ -18,7 +18,6 @@ function getSMTPConfig() {
 
 async function createTransporter() {
   const { host, port, user, pass } = getSMTPConfig();
-
   if (!host || !user || !pass) {
     console.error(
       "SMTP vars ->",
@@ -67,26 +66,96 @@ async function sendMail({ to, subject, text, html }) {
 }
 
 // -------- Utils --------
-function generateCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+
+function onlyDigits(v = "") {
+  return String(v).replace(/\D/g, "");
+}
+function formatCpf(digits) {
+  if (digits.length !== 11) return null;
+  return `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6,9)}-${digits.slice(9)}`;
+}
 function isValidEmail(email) {
   if (!email) return false;
   const e = String(email).trim().toLowerCase();
   if (!EMAIL_REGEX.test(e)) return false;
-
-  // Bloqueia domínios claramente incorretos/placeholder comuns
   const badDomains = new Set(["email.com", "example.com", "test.com", "teste.com"]);
   const domain = e.split("@")[1];
   if (badDomains.has(domain)) return false;
-
   return true;
 }
+function generateCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
 
-// -------- Templates de e-mail --------
-function buildEmail(code) {
+async function findUsuarioByCpf(cpfInput) {
+  const digits = onlyDigits(cpfInput || "");
+  const formatted = formatCpf(digits);
+
+  // 1ª tentativa: CPF formatado (modelo padrão)
+  if (formatted) {
+    const snap = await usuariosRef.where("cpf", "==", formatted).limit(1).get();
+    if (!snap.empty) return snap.docs[0];
+  }
+
+  // 2ª tentativa: exatamente o valor enviado (caso tenha sido salvo cru)
+  const snapRaw = await usuariosRef.where("cpf", "==", String(cpfInput)).limit(1).get();
+  if (!snapRaw.empty) return snapRaw.docs[0];
+
+  // 3ª tentativa: se você tiver salvo um campo auxiliar "cpf_digits"
+  const snapDigits = await usuariosRef.where("cpf_digits", "==", digits).limit(1).get();
+  if (!snapDigits.empty) return snapDigits.docs[0];
+
+  return null;
+}
+
+async function populateIdoso(idosoRefPath) {
+  try {
+    if (!idosoRefPath) return null;
+    const ref = db.doc(idosoRefPath);
+    const snap = await ref.get();
+    if (!snap.exists) return null;
+    return { id: snap.id, ...snap.data() };
+  } catch (_) {
+    return null;
+  }
+}
+
+// -------- Services --------
+
+// 1) Prepara login (RESPONSÁVEL)
+export const prepareLogin = async (cpfResponsavel) => {
+  console.log("🔎 Procurando responsável com CPF:", cpfResponsavel);
+
+  const usuarioDoc = await findUsuarioByCpf(cpfResponsavel);
+  if (!usuarioDoc) {
+    console.log("❌ Responsável não encontrado");
+    return { success: false, error: "Responsável não encontrado" };
+  }
+
+  const usuario = usuarioDoc.data();
+  const email = (usuario?.email || "").trim().toLowerCase();
+
+  if (!isValidEmail(email)) {
+    console.log("❌ E-mail inválido no cadastro:", email || "(vazio)");
+    return { success: false, error: "E-mail do responsável inválido no cadastro" };
+  }
+
+  const code = generateCode();
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
+
+  await usuarioDoc.ref.update({
+    loginCode: code,
+    loginCodeExpiresAt: expiresAt,
+    lastLoginCodeAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  console.log("✅ Responsável encontrado. Código gerado e salvo. E-mail destino:", email);
+  return { success: true, email, code, usuarioId: usuarioDoc.id };
+};
+
+// 2) Envia o e-mail
+export const sendLoginEmail = async (email, code) => {
   const subject = "Seu código de acesso - AssisConnect";
   const text = `Olá,
 
@@ -96,6 +165,7 @@ Seu código de verificação é: ${code}
 Validade: 10 minutos.
 
 Se você não solicitou este código, ignore este e-mail.`;
+
   const html = `
   <div style="font-family: Arial, Helvetica, sans-serif; background:#f7f7f7; padding:24px;">
     <div style="max-width:520px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,0.06);">
@@ -118,66 +188,16 @@ Se você não solicitou este código, ignore este e-mail.`;
       </div>
     </div>
   </div>`;
-  return { subject, text, html };
-}
 
-// -------- Services --------
-
-// 1) Prepara login
-export const prepareLogin = async (cpf) => {
-  console.log("🔎 Procurando pessoa com CPF:", cpf);
-
-  const docRef = pessoasRef.doc(cpf);
-  const doc = await docRef.get();
-  if (!doc.exists) {
-    console.log("❌ Pessoa não encontrada no Firestore");
-    return { success: false, error: "Pessoa idosa não encontrada" };
-  }
-
-  const pessoa = doc.data();
-
-  // Usa e-mail do responsável conforme sua coleção atual
-  const rawEmail =
-    pessoa?.responsavel?.email ||
-    pessoa?.emailVinculado ||
-    pessoa?.emailResponsavel ||
-    pessoa?.email ||
-    null;
-
-  const email = (rawEmail || "").trim().toLowerCase();
-
-  // ✅ Validação antes de tentar enviar
-  if (!isValidEmail(email)) {
-    console.log("❌ E-mail inválido no cadastro:", email || "(vazio)");
-    return { success: false, error: "E-mail do responsável inválido no cadastro" };
-  }
-
-  const code = generateCode();
-  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
-
-  await docRef.update({
-    loginCode: code,
-    loginCodeExpiresAt: expiresAt,
-  });
-
-  console.log("✅ Pessoa encontrada. Código gerado e salvo. E-mail destino:", email);
-  return { success: true, email, code };
-};
-
-// 2) Envia o e-mail
-export const sendLoginEmail = async (email, code) => {
-  console.log("📨 Agendando envio de e-mail para:", email);
-  const { subject, text, html } = buildEmail(code);
   return sendMail({ to: email, subject, text, html });
 };
 
-// 3) Valida o código
-export const validateCode = async (cpf, code) => {
-  const docRef = pessoasRef.doc(cpf);
-  const doc = await docRef.get();
-  if (!doc.exists) return { success: false, error: "Pessoa não cadastrada" };
+// 3) Valida o código (no DOC DO RESPONSÁVEL)
+export const validateCode = async (cpfResponsavel, code) => {
+  const usuarioDoc = await findUsuarioByCpf(cpfResponsavel);
+  if (!usuarioDoc) return { success: false, error: "Responsável não encontrado" };
 
-  const data = doc.data();
+  const data = usuarioDoc.data();
   const stored = data.loginCode;
   const expiresAt = data.loginCodeExpiresAt || 0;
 
@@ -185,10 +205,14 @@ export const validateCode = async (cpf, code) => {
   if (Date.now() > expiresAt) return { success: false, error: "Código expirado" };
   if (String(code) !== String(stored)) return { success: false, error: "Código inválido" };
 
-  await docRef.update({
+  await usuarioDoc.ref.update({
     loginCode: admin.firestore.FieldValue.delete(),
     loginCodeExpiresAt: admin.firestore.FieldValue.delete(),
+    lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  return { success: true, usuario: { id: doc.id, ...data } };
+  const usuario = { id: usuarioDoc.id, ...data };
+  const idoso = await populateIdoso(usuario.idosoRef);
+
+  return { success: true, usuario, idoso };
 };

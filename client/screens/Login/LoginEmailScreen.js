@@ -1,3 +1,4 @@
+// client/screens/Login/LoginEmailScreen.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
@@ -54,11 +55,31 @@ export default function LoginEmailScreen({ navigation, route }) {
       setLoadingVerify(true);
       const resp = await verifyCode(cpf, code);
       if (resp?.success) {
-        // ✅ salva CPF na sessão para a Home saber qual documento carregar
+        // ✅ salva sessão com usuário e idoso (ID aleatório)
+        const usuario = resp.usuario || {};
+        const idoso = resp.idoso || null;
+
+        // tenta extrair elderId do objeto idoso ou do caminho idosoRef
+        const elderIdFromRef = usuario.idosoRef
+          ? String(usuario.idosoRef).split("/")[1]
+          : null;
+
         await AsyncStorage.setItem(
           "session",
-          JSON.stringify({ loggedIn: true, timestamp: Date.now(), cpf })
+          JSON.stringify({
+            loggedIn: true,
+            timestamp: Date.now(),
+            // identificação do responsável
+            usuarioId: usuario.id || null,
+            // vínculo com a pessoa idosa
+            elderId: idoso?.id || elderIdFromRef || null,
+            elderRef:
+              usuario.idosoRef || (idoso ? `pessoaIdosa/${idoso.id}` : null),
+            // guardamos o CPF digitado apenas para conveniência (reenvio)
+            cpf,
+          })
         );
+
         setNavOnClose(true);
         setPopup({ visible: true, message: "Código validado com sucesso." });
         return;

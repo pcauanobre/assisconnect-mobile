@@ -26,24 +26,40 @@ import styles from "../../styles/perfilIdosoStyles";
 
 // Firebase
 import { db, storage } from "../../services/firebaseConfig";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
-
-// === helpers ===
-const sanitize = (v) => {
-  if (Array.isArray(v)) return v.map(sanitize).filter((x) => x !== undefined);
-  if (v && typeof v === "object") {
-    const o = {};
-    Object.keys(v).forEach((k) => {
-      const sv = sanitize(v[k]);
-      if (sv !== undefined) o[k] = sv;
-    });
-    return o;
-  }
-  return v === undefined ? undefined : v;
+/* ---------------- helpers ---------------- */
+const onlyDigits = (v = "") => String(v).replace(/\D/g, "");
+const formatCpf = (v = "") => {
+  const d = onlyDigits(v).slice(0, 11);
+  if (d.length !== 11) return v;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 };
+
+async function findUsuarioDocByCpf(cpfInput) {
+  const digits = onlyDigits(cpfInput || "");
+  const formatted = formatCpf(digits);
+
+  if (formatted) {
+    const s1 = await getDocs(query(collection(db, "usuarios"), where("cpf", "==", formatted)));
+    if (!s1.empty) return s1.docs[0];
+  }
+  if (digits) {
+    const s2 = await getDocs(query(collection(db, "usuarios"), where("cpf_digits", "==", digits)));
+    if (!s2.empty) return s2.docs[0];
+  }
+  return null;
+}
 
 async function pickImage() {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -68,12 +84,29 @@ async function uploadToStorage(localUri, pathInBucket) {
   return await getDownloadURL(r);
 }
 
+const sanitize = (v) => {
+  if (Array.isArray(v)) return v.map(sanitize).filter((x) => x !== undefined);
+  if (v && typeof v === "object") {
+    const o = {};
+    Object.keys(v).forEach((k) => {
+      const sv = sanitize(v[k]);
+      if (sv !== undefined) o[k] = sv;
+    });
+    return o;
+  }
+  return v === undefined ? undefined : v;
+};
+
 export default function PerfilPessoaIdosaScreen() {
   const [activeTab, setActiveTab] = useState("contatos");
   const [documentModalVisible, setDocumentModalVisible] = useState(false);
   const [currentPreviewUrl, setCurrentPreviewUrl] = useState(null);
 
+  // sessão
   const [cpf, setCpf] = useState(null);
+  const [usuarioId, setUsuarioId] = useState(null);
+  const [idosoRef, setIdosoRef] = useState(null); // ex.: "pessoaIdosa/<autoId>"
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -99,6 +132,8 @@ export default function PerfilPessoaIdosaScreen() {
   const loadFromDB = useCallback(async () => {
     try {
       setLoading(true);
+
+      // 1) pega cpf da sessão
       const raw = await AsyncStorage.getItem("session");
       const session = raw ? JSON.parse(raw) : null;
       const cpfSess = session?.cpf;
@@ -108,20 +143,36 @@ export default function PerfilPessoaIdosaScreen() {
       }
       setCpf(cpfSess);
 
-      const pessoaRef = doc(db, "pessoaIdosa", String(cpfSess));
-      const pessoaSnap = await getDoc(pessoaRef);
-      if (!pessoaSnap.exists()) {
-        Alert.alert("Atenção", "Cadastro não encontrado.");
+      // 2) encontra usuário (responsável) e pega idosoRef
+      const usuarioDoc = await findUsuarioDocByCpf(cpfSess);
+      if (!usuarioDoc) {
+        Alert.alert("Atenção", "Responsável não encontrado.");
         return;
       }
-      const p = pessoaSnap.data() || {};
+      setUsuarioId(usuarioDoc.id);
+
+      const u = usuarioDoc.data() || {};
+      if (!u?.idosoRef) {
+        Alert.alert("Atenção", "Nenhum idoso vinculado a este responsável.");
+        return;
+      }
+      setIdosoRef(u.idosoRef);
+
+      // 3) carrega o idoso a partir do idosoRef (pessoaIdosa/<autoId>)
+      const refIdoso = doc(db, u.idosoRef);
+      const snapIdoso = await getDoc(refIdoso);
+      if (!snapIdoso.exists()) {
+        Alert.alert("Atenção", "Cadastro da pessoa idosa não encontrado.");
+        return;
+      }
+      const p = snapIdoso.data() || {};
 
       const mapped = {
-        id: cpfSess,
+        id: refIdoso.id,
         name: p?.nome || "—",
         sex: p?.genero || "—",
         birthDate: p?.dataNascimento || "—",
-        cpf: cpfSess,
+        cpf: p?.cpf || "—", // cpf é atributo dentro do doc do idoso
         phone: p?.contato?.telefone || "—",
         photoUrl: p?.fotoUrl || null,
         docs: {
@@ -185,10 +236,10 @@ export default function PerfilPessoaIdosaScreen() {
 
   // salvar: faz upload só do que tiver URI local, e setDoc merge dos campos
   const handleSaveAll = useCallback(async () => {
-    if (!cpf) return;
+    if (!idosoRef) return;
     try {
       setSaving(true);
-      const pessoaRef = doc(db, "pessoaIdosa", cpf);
+      const refIdoso = doc(db, idosoRef);
 
       // 1) uploads condicionais
       let newFotoUrl = null;
@@ -196,10 +247,10 @@ export default function PerfilPessoaIdosaScreen() {
       let newVacinaUrl = null;
       let newSusUrl = null;
 
-      if (fotoPerfilLocal) newFotoUrl = await uploadToStorage(fotoPerfilLocal, `pessoaIdosa/${cpf}/perfil.jpg`);
-      if (rgLocal) newRgUrl = await uploadToStorage(rgLocal, `pessoaIdosa/${cpf}/docs/rg.jpg`);
-      if (vacinaLocal) newVacinaUrl = await uploadToStorage(vacinaLocal, `pessoaIdosa/${cpf}/docs/vacina.jpg`);
-      if (susLocal) newSusUrl = await uploadToStorage(susLocal, `pessoaIdosa/${cpf}/docs/sus.jpg`);
+      if (fotoPerfilLocal) newFotoUrl = await uploadToStorage(fotoPerfilLocal, `${idosoRef}/perfil.jpg`);
+      if (rgLocal) newRgUrl = await uploadToStorage(rgLocal, `${idosoRef}/docs/rg.jpg`);
+      if (vacinaLocal) newVacinaUrl = await uploadToStorage(vacinaLocal, `${idosoRef}/docs/vacina.jpg`);
+      if (susLocal) newSusUrl = await uploadToStorage(susLocal, `${idosoRef}/docs/sus.jpg`);
 
       // 2) payload de merge
       const payload = sanitize({
@@ -226,7 +277,7 @@ export default function PerfilPessoaIdosaScreen() {
         };
       }
 
-      await setDoc(pessoaRef, payload, { merge: true });
+      await setDoc(refIdoso, payload, { merge: true });
 
       // 4) reflete na UI
       setUserData((u) => ({
@@ -257,7 +308,7 @@ export default function PerfilPessoaIdosaScreen() {
     } finally {
       setSaving(false);
     }
-  }, [cpf, edit, fotoPerfilLocal, rgLocal, vacinaLocal, susLocal]);
+  }, [idosoRef, edit, fotoPerfilLocal, rgLocal, vacinaLocal, susLocal]);
 
   if (loading && !userData) {
     return (
@@ -384,7 +435,7 @@ export default function PerfilPessoaIdosaScreen() {
         </View>
       </Modal>
 
-      {/* MODAL ÚNICO DE EDIÇÃO: dados + imagens */}
+      {/* MODAL ÚNICO DE EDIÇÃO */}
       <Modal visible={editModalVisible} transparent animationType="slide" onRequestClose={() => setEditModalVisible(false)}>
         <View style={overlayStyles.overlay}>
           <View style={editModalStyles.card}>
@@ -442,7 +493,11 @@ export default function PerfilPessoaIdosaScreen() {
                 <Text style={outlinedBtnSmall.text}>Cancelar</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[primaryBtn.centered, { paddingHorizontal: 18, minWidth: 130 }]} onPress={handleSaveAll} disabled={saving}>
+              <TouchableOpacity
+                style={[primaryBtn.centered, { paddingHorizontal: 18, minWidth: 130 }]}
+                onPress={handleSaveAll}
+                disabled={saving}
+              >
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={primaryBtn.text}>Salvar</Text>}
               </TouchableOpacity>
             </View>
@@ -528,23 +583,12 @@ const outlinedBtnSmall = StyleSheet.create({
 });
 
 const editModalStyles = StyleSheet.create({
-  card: {
-    backgroundColor: "#fff",
-    width: "92%",
-    borderRadius: 16,
-    padding: 16,
-  },
+  card: { backgroundColor: "#fff", width: "92%", borderRadius: 16, padding: 16 },
   title: { fontSize: 18, fontWeight: "bold", color: "#4B2E0F", textAlign: "center", marginBottom: 10 },
   section: { color: "#7A6A59", fontWeight: "700", marginTop: 6, marginBottom: 8 },
   label: { color: "#4B2E0F", fontWeight: "600", marginBottom: 6, marginTop: 4 },
   input: {
-    backgroundColor: "#fff",
-    borderWidth: 1.3,
-    borderColor: "#C7A98D",
-    borderRadius: 10,
-    padding: 10,
-    color: "#4B2E0F",
-    fontSize: 14,
+    backgroundColor: "#fff", borderWidth: 1.3, borderColor: "#C7A98D", borderRadius: 10, padding: 10, color: "#4B2E0F", fontSize: 14,
   },
   actions: { marginTop: 10, flexDirection: "row", justifyContent: "space-between", gap: 10 },
 });

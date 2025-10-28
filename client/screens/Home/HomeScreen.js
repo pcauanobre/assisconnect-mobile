@@ -10,6 +10,7 @@ import {
   Alert,
   Image,
   Modal,
+  Linking, // ⬅️ abrir tel: e wa.me
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -21,11 +22,17 @@ import idosoImg from "../../assets/idoso.jpeg";
 
 // 🔗 Firestore
 import { db } from "../../services/firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 
 // ===== Helpers =====
 const todayISO = () => new Date().toISOString().slice(0, 10);
-const tsToDate = (v) => (v?.toDate ? v.toDate() : v instanceof Date ? v : null);
 const addDaysISO = (iso, n) => {
   const d = new Date(`${iso}T12:00:00`);
   d.setDate(d.getDate() + n);
@@ -57,6 +64,38 @@ const humorFaces = [
 // ❤️ marrom unificado
 const BROWN = "#3A1F0F";
 
+// ===== Telefones / Ações =====
+const DEFAULT_WHATS = "5585998175354"; // já está certo ✅
+const onlyDigits = (s = "") => String(s).replace(/\D/g, "");
+const toE164BR = (raw) => {
+  const d = onlyDigits(raw);
+  if (!d) return null;
+  // se já começa com 55, mantém; senão prefixa
+  return d.startsWith("55") ? `+${d}` : `+55${d}`;
+};
+const openWhatsApp = async (raw) => {
+  const e164 = toE164BR(raw) || `+${DEFAULT_WHATS}`;
+  const noPlus = e164.replace("+", "");
+  const text = encodeURIComponent(
+    "Olá! Gostaria de saber como está a pessoa idosa sob meus cuidados, por favor."
+  );
+  const url = `https://wa.me/${noPlus}?text=${text}`;
+  const supported = await Linking.canOpenURL(url);
+  if (supported) Linking.openURL(url);
+  else Alert.alert("WhatsApp", "Não foi possível abrir o WhatsApp.");
+};
+
+const openDialer = async (raw) => {
+  const e164 = toE164BR(raw) || `+${DEFAULT_WHATS}`;
+  const url = `tel:${e164}`;
+  const supported = await Linking.canOpenURL(url);
+  if (supported) Linking.openURL(url);
+  else Alert.alert("Telefone", "Não foi possível abrir o discador.");
+};
+
+// horários 08–16 (pula 12)
+const VISIT_HOURS = ["08:00","09:00","10:00","11:00","13:00","14:00","15:00","16:00"];
+
 export default function HomeScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
@@ -70,7 +109,12 @@ export default function HomeScreen({ navigation }) {
 
   // Modais extras
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [visitOpen, setVisitOpen] = useState(false);
+
+  // Agendar visita: novo fluxo (data + hora)
+  const [visitPickerOpen, setVisitPickerOpen] = useState(false);
+  const [visitDateISO, setVisitDateISO] = useState(todayISO());
+  const [visitTime, setVisitTime] = useState(null);
+
   const [callOpen, setCallOpen] = useState(false);
   const [whatsOpen, setWhatsOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -78,43 +122,54 @@ export default function HomeScreen({ navigation }) {
   const loadData = useCallback(async (forcedISO) => {
     try {
       const useISO = forcedISO ?? dateISO;
+
       const raw = await AsyncStorage.getItem("session");
       const session = raw ? JSON.parse(raw) : null;
-      const cpf = session?.cpf;
-      if (!cpf) {
-        Alert.alert("Sessão inválida", "Entre novamente para carregar seus dados.");
+
+      // agora usamos o ID do doc pessoaIdosa salvo na sessão
+      const elderId = session?.elderId;
+      if (!elderId) {
+        Alert.alert("Sem vínculo", "Não encontramos um idoso vinculado a este responsável.");
         navigation?.replace?.("LoginCPF");
         return;
       }
 
-      // pessoaIdosa/{cpf}
-      const pessoaRef = doc(db, "pessoaIdosa", String(cpf));
+      // pessoaIdosa/{elderId}
+      const pessoaRef = doc(db, "pessoaIdosa", String(elderId));
       const pessoaSnap = await getDoc(pessoaRef);
       if (!pessoaSnap.exists()) {
-        Alert.alert("Atenção", "Cadastro não encontrado.");
+        Alert.alert("Atenção", "Cadastro da pessoa idosa não encontrado.");
         return;
       }
       const pessoa = pessoaSnap.data() || {};
       const photoUrl = pessoa?.fotoUrl || null;
 
-      // pessoaIdosa/{cpf}/dias/{YYYY-MM-DD}
-      const diaRef = doc(db, `pessoaIdosa/${cpf}/dias/${useISO}`);
+      // responsável (nome)
+      const qResp = query(
+        collection(db, "usuarios"),
+        where("idosoRef", "==", `pessoaIdosa/${elderId}`)
+      );
+      const sResp = await getDocs(qResp);
+      const respData = !sResp.empty ? sResp.docs[0].data() : null;
+      const responsibleName = respData?.nome || "-----------";
+
+      // pessoaIdosa/{elderId}/dias/{YYYY-MM-DD}
+      const diaRef = doc(db, `pessoaIdosa/${elderId}/dias/${useISO}`);
       const diaSnap = await getDoc(diaRef);
 
       if (!diaSnap.exists()) {
-        // Sem registro para a data → não abre modal, apenas marca ausência e mostra placeholders
         setNoRoutine(true);
         setDashboardData({
           date: new Date(`${useISO}T12:00:00`),
           humorLevel: 3,
           presence: "-----------",
           responsibleStaff: "-----------",
-          lastSync: null,
-          phone: "-----------",
+          phone: String(pessoa?.contato?.telefone || "-----------"),
           medications: ["-----------"],
           food: "-----------",
           comments: "-----------",
           photoUrl,
+          responsibleName,
         });
         return;
       }
@@ -135,7 +190,6 @@ export default function HomeScreen({ navigation }) {
       const phone = pessoa?.contato?.telefone || "-----------";
       const presence = dia.presenca || "-----------";
       const responsibleStaff = dia.responsavelDoDia || "-----------";
-      const lastSync = tsToDate(dia.ultimaSync) || null;
       const humorLevel = Math.min(5, Math.max(1, Number(dia.humorNivel || 3)));
 
       setNoRoutine(false);
@@ -144,12 +198,12 @@ export default function HomeScreen({ navigation }) {
         date: new Date(`${useISO}T12:00:00`),
         presence,
         responsibleStaff,
-        lastSync,
         phone,
         medications: medications.length ? medications : ["-----------"],
         food,
         comments,
         photoUrl,
+        responsibleName,
       });
     } catch (e) {
       console.error(e);
@@ -168,31 +222,38 @@ export default function HomeScreen({ navigation }) {
     loadData();
   };
 
-  const manualReload = () => {
-    setRefreshing(true);
-    loadData();
-  };
-
   const formattedDate =
     dashboardData?.date
       ?.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
       .replace(".", "") ?? "—";
 
-  const lastSyncStr =
-    dashboardData?.lastSync
-      ? dashboardData.lastSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-      : "—";
-
   // índice visual do humor
   const selectedIdx = 5 - (dashboardData?.humorLevel ?? 3);
 
-  // escolher data no calendário
+  // escolher data no calendário (topo)
   const selectDate = (iso) => {
     setDateISO(iso);
     setDateModalOpen(false);
     setRefreshing(true);
     loadData(iso);
   };
+
+  // ====== Visit scheduler actions ======
+  const openVisitScheduler = () => {
+    setVisitDateISO(todayISO());
+    setVisitTime(null);
+    setVisitPickerOpen(true);
+  };
+  const confirmVisit = () => {
+    if (!visitDateISO || !visitTime) return;
+    setVisitPickerOpen(false);
+    Alert.alert("Agendamento", `Visita agendada para ${new Date(`${visitDateISO}T12:00:00`).toLocaleDateString("pt-BR")} às ${visitTime}.`);
+  };
+
+  // número efetivo (usa o do cadastro, senão o default)
+  const effectivePhone = dashboardData?.phone && dashboardData?.phone !== "-----------"
+    ? dashboardData.phone
+    : DEFAULT_WHATS;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
@@ -226,10 +287,8 @@ export default function HomeScreen({ navigation }) {
           {noRoutine && (
             <Text style={styles.noRoutineCaption}>Não há rotina para esta data</Text>
           )}
-          {/* Mostra a data formatada atual abaixo (opcional) */}
           <Text style={styles.currentDateText}>{formattedDate}</Text>
         </View>
-
 
         {/* Perfil */}
         <View style={styles.profileSection}>
@@ -258,19 +317,9 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Infos */}
+        {/* Infos principais do dia */}
         <InfoCard text="Presença: " boldText={dashboardData?.presence ?? "-----------"} />
         <InfoCard text="Responsável do Dia: " boldText={dashboardData?.responsibleStaff ?? "-----------"} />
-
-        <InfoCard
-          text="Última sinc. às: "
-          boldText={lastSyncStr}
-          rightAccessory={
-            <TouchableOpacity onPress={manualReload} style={styles.reloadBtn} accessibilityLabel="Recarregar dados">
-              <Feather name="refresh-cw" size={16} color="#fff" />
-            </TouchableOpacity>
-          }
-        />
 
         {/* Acordeões */}
         <Accordion title="Medicamentos do Dia">
@@ -288,23 +337,30 @@ export default function HomeScreen({ navigation }) {
         </Accordion>
 
         {/* Botões */}
-        <TouchableOpacity style={styles.mainButton} onPress={() => setVisitOpen(true)}>
+        <TouchableOpacity style={styles.mainButton} onPress={openVisitScheduler}>
           <Text style={styles.mainButtonText}>Agendar Visita</Text>
         </TouchableOpacity>
 
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.callButton} onPress={() => setCallOpen(true)}>
+          <TouchableOpacity
+            style={styles.callButton}
+            onPress={() => openDialer(effectivePhone)}
+          >
             <Feather name="phone" size={16} color="#fff" />
             <Text style={styles.callText}>Ligar</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.callButton} onPress={() => setWhatsOpen(true)}>
+
+          <TouchableOpacity
+            style={styles.callButton}
+            onPress={() => openWhatsApp(effectivePhone)}
+          >
             <MaterialCommunityIcons name="whatsapp" size={18} color="#fff" />
             <Text style={styles.callText}>WhatsApp</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* === Modal: Calendário === */}
+      {/* === Modal: Calendário topo === */}
       <Modal visible={dateModalOpen} transparent animationType="fade" onRequestClose={() => setDateModalOpen(false)}>
         <View style={overlayStyles.overlay}>
           <View style={modalCardStyles.card}>
@@ -343,7 +399,68 @@ export default function HomeScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* === Modais padrões === */}
+      {/* === Modal: Agendar visita (data + hora) === */}
+      <Modal visible={visitPickerOpen} transparent animationType="fade" onRequestClose={() => setVisitPickerOpen(false)}>
+        <View style={overlayStyles.overlay}>
+          <View style={modalCardStyles.card}>
+            <Text style={modalCardStyles.title}>Agendar Visita</Text>
+            <Text style={modalCardStyles.subtitle}>Escolha a data e depois o horário (08:00–16:00, sem 12:00)</Text>
+
+            <Calendar
+              initialDate={visitDateISO}
+              onDayPress={(day) => setVisitDateISO(day.dateString)}
+              markedDates={{
+                [visitDateISO]: { selected: true, selectedColor: BROWN, selectedTextColor: "#fff" },
+              }}
+              theme={{
+                textDayFontWeight: "600",
+                textMonthFontWeight: "700",
+                textDayHeaderFontWeight: "600",
+                arrowColor: BROWN,
+                monthTextColor: BROWN,
+                selectedDayBackgroundColor: BROWN,
+              }}
+              style={calendarStyles.calendar}
+            />
+
+            {/* Grade de horários */}
+            <Text style={{ color: colors.muted, marginBottom: 8, marginTop: 4 }}>
+              Horário:
+            </Text>
+            <View style={timeGrid.grid}>
+              {VISIT_HOURS.map((h) => {
+                const selected = visitTime === h;
+                return (
+                  <TouchableOpacity
+                    key={h}
+                    style={[timeGrid.item, selected && timeGrid.itemSelected]}
+                    onPress={() => setVisitTime(h)}
+                  >
+                    <Text style={[timeGrid.itemText, selected && timeGrid.itemTextSelected]}>
+                      {h}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={[modalCardStyles.actions, { marginTop: 12 }]}>
+              <TouchableOpacity style={outlinedBtnSmall.container} onPress={() => setVisitPickerOpen(false)}>
+                <Text style={outlinedBtnSmall.text}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[primaryBtn.centered, { opacity: visitDateISO && visitTime ? 1 : 0.5 }]}
+                disabled={!visitDateISO || !visitTime}
+                onPress={confirmVisit}
+              >
+                <Text style={primaryBtn.text}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* === Modais padrões: config / logout === */}
       <SimpleModal
         visible={settingsOpen}
         onClose={() => setSettingsOpen(false)}
@@ -357,39 +474,6 @@ export default function HomeScreen({ navigation }) {
           { icon: "info", label: "Sobre o AssisConnect" },
           { icon: "help-circle", label: "Ajuda" },
         ]}
-      />
-
-      <ConfirmModal
-        visible={visitOpen}
-        onCancel={() => setVisitOpen(false)}
-        onConfirm={() => {
-          setVisitOpen(false);
-          Alert.alert("Agendamento", `Visita agendada com sucesso para ${formattedDate}!`);
-        }}
-        title="Agendar Visita"
-        subtitle={`Em breve: escolha data/horário. Por ora, confirme o agendamento para ${formattedDate}.`}
-      />
-
-      <ConfirmModal
-        visible={callOpen}
-        onCancel={() => setCallOpen(false)}
-        onConfirm={() => {
-          setCallOpen(false);
-          Alert.alert("Telefone", `Iniciando ligação para ${dashboardData?.phone ?? "-----------"}...`);
-        }}
-        title="Ligar agora?"
-        subtitle={`Confirmar ligação para ${dashboardData?.phone ?? "-----------"}.`}
-      />
-
-      <ConfirmModal
-        visible={whatsOpen}
-        onCancel={() => setWhatsOpen(false)}
-        onConfirm={() => {
-          setWhatsOpen(false);
-          Alert.alert("WhatsApp", `Abrindo WhatsApp para ${dashboardData?.phone ?? "-----------"}...`);
-        }}
-        title="Abrir WhatsApp?"
-        subtitle={`Vamos abrir uma conversa com ${dashboardData?.phone ?? "-----------"}.`}
       />
 
       <ConfirmModal
@@ -492,266 +576,84 @@ const RING_OFFSET = 6;
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   scroll: { paddingHorizontal: 20, paddingBottom: 80 },
-
-  topbar: {
-    marginTop: 10,
-    marginBottom: 6,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  topbar: { marginTop: 10, marginBottom: 6, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   iconBtn: { padding: 6, borderRadius: 10 },
-
-  /* Date selector */
-  dateRowColumn: {
-    marginBottom: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dateIconOnly: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E2D8CF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#fff",
-  },
-  noRoutineCaption: {
-    marginTop: 6,
-    color: "#9A7F6B",
-    fontSize: 12,
-  },
-  currentDateText: {
-    marginTop: 2,
-    color: "#6B543F",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-
-  noRoutineBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#FFF8F0",
-    borderColor: "#F1DEC9",
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
+  dateRowColumn: { marginBottom: 8, alignItems: "center", justifyContent: "center" },
+  dateIconOnly: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#E2D8CF", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#fff" },
+  noRoutineCaption: { marginTop: 6, color: "#9A7F6B", fontSize: 12 },
+  currentDateText: { marginTop: 2, color: "#6B543F", fontSize: 12, fontWeight: "700" },
+  noRoutineBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FFF8F0", borderColor: "#F1DEC9", borderWidth: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, marginBottom: 10 },
   noRoutineBannerText: { color: "#6B543F", flex: 1 },
-
   profileSection: { alignItems: "center", marginTop: 10 },
-  avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    marginBottom: 10,
-    borderWidth: 3,
-    borderColor: "#DCC6B6",
-  },
+  avatar: { width: 90, height: 90, borderRadius: 45, marginBottom: 10, borderWidth: 3, borderColor: "#DCC6B6" },
   greeting: { fontSize: 22, fontWeight: "700", color: colors.text, textAlign: "center" },
-
-  humorCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    marginVertical: 8,
-    alignItems: "center",
-  },
+  humorCard: { backgroundColor: colors.white, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 20, marginVertical: 8, alignItems: "center" },
   humorTitle: { fontSize: 14, color: colors.muted, marginBottom: 14 },
   humorRow: { flexDirection: "row", justifyContent: "space-between", width: "100%" },
-
-  humorItem: {
-    width: 42,
-    height: 42,
-    marginHorizontal: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    overflow: "visible",
-  },
-  humorCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  humorRing: {
-    position: "absolute",
-    top: -RING_OFFSET,
-    left: -RING_OFFSET,
-    right: -RING_OFFSET,
-    bottom: -RING_OFFSET,
-    borderWidth: 3,
-    borderColor: BROWN,
-    borderRadius: 21 + RING_OFFSET,
-  },
+  humorItem: { width: 42, height: 42, marginHorizontal: 2, alignItems: "center", justifyContent: "center", position: "relative", overflow: "visible" },
+  humorCircle: { width: 42, height: 42, borderRadius: 21, justifyContent: "center", alignItems: "center" },
+  humorRing: { position: "absolute", top: -RING_OFFSET, left: -RING_OFFSET, right: -RING_OFFSET, bottom: -RING_OFFSET, borderWidth: 3, borderColor: BROWN, borderRadius: 21 + RING_OFFSET },
   humorEmoji: { fontSize: 22 },
-
-  infoCard: {
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  infoCard: { backgroundColor: colors.white, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 18, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10, borderWidth: 1, borderColor: colors.border },
   infoCardText: { color: colors.text, fontSize: 15 },
   infoCardBold: { fontWeight: "bold" },
   infoCardContent: { flexDirection: "row", alignItems: "center" },
-
-  reloadBtn: {
-    backgroundColor: BROWN,
-    borderRadius: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-
-  accordionHeader: {
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  reloadBtn: { backgroundColor: BROWN, borderRadius: 16, paddingVertical: 8, paddingHorizontal: 10 },
+  accordionHeader: { backgroundColor: colors.white, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 18, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10, borderWidth: 1, borderColor: colors.border },
   accordionTitle: { color: colors.text, fontSize: 15, fontWeight: "700" },
-  accordionBody: {
-    backgroundColor: "#FCF9F4",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 14,
-    marginTop: -8,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  accordionBody: { backgroundColor: "#FCF9F4", paddingHorizontal: 20, paddingVertical: 16, borderBottomLeftRadius: 14, borderBottomRightRadius: 14, marginTop: -8, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
   accordionText: { color: colors.text, fontSize: 15, lineHeight: 22 },
-
-  mainButton: {
-    backgroundColor: BROWN,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 10,
-  },
+  mainButton: { backgroundColor: BROWN, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 10 },
   mainButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
-
-  actionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  callButton: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: BROWN,
-    borderRadius: 12,
-    paddingVertical: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginHorizontal: 6,
-  },
+  actionsRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 10, marginBottom: 6 },
+  callButton: { flex: 1, flexDirection: "row", backgroundColor: BROWN, borderRadius: 12, paddingVertical: 12, justifyContent: "center", alignItems: "center", marginHorizontal: 6 },
   callText: { color: "#fff", marginLeft: 6, fontWeight: "bold", fontSize: 15 },
 });
 
-const calendarStyles = StyleSheet.create({
-  calendar: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    marginBottom: 10,
+const timeGrid = StyleSheet.create({
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  item: {
+    borderWidth: 1.5,
+    borderColor: BROWN,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: "#fff",
   },
+  itemSelected: { backgroundColor: BROWN },
+  itemText: { color: BROWN, fontWeight: "700" },
+  itemTextSelected: { color: "#fff", fontWeight: "700" },
+});
+
+const calendarStyles = StyleSheet.create({
+  calendar: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, marginBottom: 10 },
 });
 
 const appHeaderStyles = StyleSheet.create({
-  appHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    backgroundColor: "#FAF7F2",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2D8CF",
-  },
+  appHeader: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 15, backgroundColor: "#FAF7F2", borderBottomWidth: 1, borderBottomColor: "#E2D8CF" },
   appLogo: { width: 42, height: 42, marginRight: 10, resizeMode: "contain", borderRadius: 21 },
   appTitle: { fontSize: 20, fontWeight: "700", color: "#3A2C1F" },
 });
 
 const overlayStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.65)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "center", alignItems: "center", paddingHorizontal: 20 },
 });
 
 const modalCardStyles = StyleSheet.create({
-  card: {
-    backgroundColor: "#fff",
-    width: "92%",
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  card: { backgroundColor: "#fff", width: "92%", borderRadius: 16, padding: 18, borderWidth: 1, borderColor: colors.border },
   title: { fontSize: 18, fontWeight: "bold", color: colors.text, marginBottom: 6, textAlign: "center" },
   subtitle: { color: colors.muted, textAlign: "center", marginBottom: 12 },
-  rowItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
-    marginBottom: 10,
-  },
+  rowItem: { flexDirection: "row", alignItems: "center", paddingVertical: 12, paddingHorizontal: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, marginBottom: 10 },
   rowText: { marginLeft: 10, color: colors.text, fontWeight: "600" },
   actions: { marginTop: 8, flexDirection: "row", justifyContent: "space-between", gap: 10 },
 });
 
 const primaryBtn = StyleSheet.create({
-  centered: {
-    backgroundColor: BROWN,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: "center",
-    alignSelf: "flex-start",
-    flexDirection: "row",
-  },
+  centered: { backgroundColor: BROWN, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 20, alignItems: "center", alignSelf: "flex-start", flexDirection: "row" },
   text: { color: "#fff", fontWeight: "bold" },
 });
 
 const outlinedBtnSmall = StyleSheet.create({
-  container: {
-    borderWidth: 1.5,
-    borderColor: BROWN,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignItems: "center",
-    backgroundColor: "transparent",
-  },
+  container: { borderWidth: 1.5, borderColor: BROWN, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 20, alignItems: "center", backgroundColor: "transparent" },
   text: { color: BROWN, fontWeight: "bold" },
 });

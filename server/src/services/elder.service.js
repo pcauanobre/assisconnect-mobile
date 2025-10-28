@@ -3,6 +3,13 @@ import PessoaIdosaModel from "../models/elder.model.js";
 
 const COLLECTION = "pessoaIdosa";
 
+async function cpfJaExiste(cpf, ignorarDocId = null) {
+  const snap = await db.collection(COLLECTION).where("cpf", "==", cpf).get();
+  if (snap.empty) return false;
+  if (!ignorarDocId) return true;
+  return snap.docs.some((d) => d.id !== ignorarDocId);
+}
+
 const elderService = {
   async getAll() {
     const snapshot = await db.collection(COLLECTION).get();
@@ -17,16 +24,35 @@ const elderService = {
   },
 
   async create(data) {
+    if (await cpfJaExiste(data.cpf)) {
+      throw new Error("CPF já cadastrado para outra pessoa idosa");
+    }
+
     const pessoa = new PessoaIdosaModel(data);
     const ref = await db.collection(COLLECTION).add(pessoa.toJSON());
     return { id: ref.id, ...pessoa.toJSON() };
   },
 
   async update(id, data) {
-    // Atualização total (valida novamente)
-    const pessoa = new PessoaIdosaModel(data);
-    await db.collection(COLLECTION).doc(id).update(pessoa.toJSON());
-    return { id, ...pessoa.toJSON() };
+    const ref = db.collection(COLLECTION).doc(id);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error("Pessoa Idosa não encontrada");
+
+    const atual = snap.data();
+    const merged = { ...atual, ...data };
+
+    // se CPF foi alterado, garantir unicidade
+    if (merged.cpf && merged.cpf !== atual.cpf) {
+      if (await cpfJaExiste(merged.cpf, id)) {
+        throw new Error("CPF já cadastrado para outra pessoa idosa");
+      }
+    }
+
+    // ✅ valida o schema parcial (aceita apenas campos enviados)
+    const pessoaParcial = new PessoaIdosaModel(merged, { allowPartial: true });
+
+    await ref.update(pessoaParcial.toJSON());
+    return { id, ...pessoaParcial.toJSON() };
   },
 
   async remove(id) {

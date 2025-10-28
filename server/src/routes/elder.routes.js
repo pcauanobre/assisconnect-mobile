@@ -24,6 +24,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // QUERY ESPECIFICA DE GET (COLOCAR TIPO (EX: MEDICAMENTO, RESPONSAVEL, COMENTARIO, HUMOR, ALIMENTACAO))
+// PADRÃO: localhost:3000/elder/[id]/query?tipo=humor
 router.get("/:id/query", async (req, res) => {
   try {
     const { id } = req.params;
