@@ -17,6 +17,7 @@ class PessoaIdosaModel {
     // atribuição dos valores validos
     this.nome = value.nome;
     this.idade = value.idade;
+    this.cpf = value.cpf;
     this.peso_kg = value.peso_kg;
     this.altura_cm = value.altura_cm;
     this.genero = value.genero;
@@ -26,8 +27,6 @@ class PessoaIdosaModel {
     this.responsavel = value.responsavel;
     this.humor = value.humor;
     this.alimentacao = value.alimentacao;
-    this.telefone_responsavel = value.telefone_responsavel;
-    this.email_responsavel = value.email_responsavel;
     this.comentario = value.comentario;
     this.createdAt = value.createdAt;
   }
@@ -37,6 +36,7 @@ class PessoaIdosaModel {
     return {
       nome: this.nome,
       idade: this.idade,
+      cpf: this.cpf,
       peso_kg: this.peso_kg,
       altura_cm: this.altura_cm,
       genero: this.genero,
@@ -46,8 +46,6 @@ class PessoaIdosaModel {
       responsavel: this.responsavel,
       humor: this.humor,
       alimentacao: this.alimentacao,
-      telefone_responsavel: this.telefone_responsavel,
-      email_responsavel: this.email_responsavel,
       comentario: this.comentario,
       createdAt: this.createdAt,
     };
@@ -58,6 +56,9 @@ class PessoaIdosaModel {
     return Joi.object({
       nome: Joi.string().required(),
       idade: Joi.number().integer().min(0).required(),
+      cpf: Joi.string()
+        .pattern(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/) // formato 000.000.000-00
+        .required(),
       peso_kg: Joi.number().positive().required(), // apenas em kg
       altura_cm: Joi.number().positive().required(), // apenas em cm
       genero: Joi.string().valid("Feminino", "Masculino", "Outro").required(), // deixei só esses 3 mas podem add mais se quiser
@@ -83,10 +84,6 @@ class PessoaIdosaModel {
       responsavel: Joi.string().required(),
       humor: Joi.number().min(1).max(5).required(),
       alimentacao: Joi.string().required(),
-      telefone_responsavel: Joi.string()
-        .pattern(/^\+55\s\d{2}\s9?\d{4}-\d{4}$/)
-        .required(), // padrão de número (+55 12 3456-7890)
-      email_responsavel: Joi.string().required(),
       comentario: Joi.string(),
       createdAt: Joi.date().default(() => new Date()),
     });
