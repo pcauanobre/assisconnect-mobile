@@ -1,5 +1,8 @@
 // Chamadas ao backend HTTP (que envia e-mails via SMTP)
-const API_URL = "http://localhost:3000"; // em device físico, troque por http://SEU_IP_LOCAL:3000
+const API_URL =
+  Platform.OS === "web"
+    ? "http://localhost:3000"
+    : "http://10.0.0.91:3000"; // em device físico, troque por http://SEU_IP_LOCAL:3000
 
 export async function startLogin(cpf) {
   const resp = await fetch(`${API_URL}/api/auth/start`, {

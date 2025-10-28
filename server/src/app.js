@@ -5,7 +5,8 @@ dotenv.config();
 
 import authRoutes from "./routes/authRoutes.js";
 import elderRoutes from "./routes/elder.routes.js";
-import userRoutes from "./routes/user.routes.js"
+import userRoutes from "./routes/user.routes.js";
+import adminRoutes from "./routes/admin.routes.js"; // ⬅️ novo import
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.get("/api/auth/ping", (_req, res) => res.json({ pong: true }));
 // Rotas
 app.use("/api/auth", authRoutes);
 app.use("/elder", elderRoutes);
-app.use("/user", userRoutes)
+app.use("/user", userRoutes);
+app.use("/admin", adminRoutes); // ⬅️ registra endpoints admin
 
 export default app;

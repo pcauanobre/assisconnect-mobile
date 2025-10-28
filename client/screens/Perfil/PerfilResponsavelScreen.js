@@ -21,26 +21,84 @@ import Appheader from "../../components/Appheader";
 
 // Firebase
 import { db, storage } from "../../services/firebaseConfig";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // ❤️ marrom unificado
 const BROWN = "#3A1F0F";
+
+/* ---------------- helpers ---------------- */
+const onlyDigits = (v = "") => String(v).replace(/\D/g, "");
+const formatCpf = (v = "") => {
+  const d = onlyDigits(v).slice(0, 11);
+  if (d.length !== 11) return v;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+};
+
+async function findUsuarioDocByCpf(cpfInput) {
+  const digits = onlyDigits(cpfInput || "");
+  const formatted = formatCpf(digits);
+
+  // tenta por cpf formatado
+  if (formatted) {
+    const s1 = await getDocs(query(collection(db, "usuarios"), where("cpf", "==", formatted), where("cpf", "==", formatted)));
+    if (!s1.empty) return s1.docs[0];
+  }
+  // tenta por cpf_digits
+  if (digits) {
+    const s2 = await getDocs(query(collection(db, "usuarios"), where("cpf_digits", "==", digits)));
+    if (!s2.empty) return s2.docs[0];
+  }
+  return null;
+}
+
+async function pickImage() {
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== "granted") {
+    Alert.alert("Permissão", "Precisamos de acesso à galeria para continuar.");
+    return null;
+  }
+  const res = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    quality: 0.85,
+  });
+  if (res.canceled) return null;
+  return res.assets?.[0]?.uri || null;
+}
+
+async function uploadToStorage(localUri, path) {
+  if (!localUri) return null;
+  const resp = await fetch(localUri);
+  const blob = await resp.blob();
+  const storageRef = ref(storage, path);
+  await uploadBytes(storageRef, blob);
+  return await getDownloadURL(storageRef);
+}
 
 export default function PerfilResponsavelScreen() {
   const scrollRef = useRef(null);
 
   const [responsavel, setResponsavel] = useState({
     nome: "—",
-    sexo: "—",
-    nascimento: "—",
-    parentesco: "—",
+    sexo: "—", // opcional (não está no schema do backend, mas Firestore aceita)
+    nascimento: "—", // mapeia para data_nascimento em usuarios
+    parentesco: "—", // opcional
     foto: "https://i.pravatar.cc/150?img=12",
     telefone: "—",
     email: "—",
   });
 
-  const [cpf, setCpf] = useState(null);
+  const [cpf, setCpf] = useState(null);           // cpf da sessão (responsável)
+  const [usuarioId, setUsuarioId] = useState(null); // id do doc em "usuarios"
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isChanged, setIsChanged] = useState(false);
@@ -48,29 +106,6 @@ export default function PerfilResponsavelScreen() {
 
   // imagem local escolhida (preview antes do upload)
   const [fotoLocalUri, setFotoLocalUri] = useState(null);
-
-  const pickImage = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permissão", "Precisamos de acesso à galeria para continuar.");
-      return null;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.85,
-    });
-    if (res.canceled) return null;
-    return res.assets?.[0]?.uri || null;
-  }, []);
-
-  const uploadToStorage = useCallback(async (localUri, path) => {
-    if (!localUri) return null;
-    const resp = await fetch(localUri);
-    const blob = await resp.blob();
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, blob);
-    return await getDownloadURL(storageRef);
-  }, []);
 
   const loadFromDB = useCallback(async () => {
     try {
@@ -84,24 +119,25 @@ export default function PerfilResponsavelScreen() {
       }
       setCpf(cpfSess);
 
-      const pessoaRef = doc(db, "pessoaIdosa", String(cpfSess));
-      const pessoaSnap = await getDoc(pessoaRef);
-      if (!pessoaSnap.exists()) {
-        Alert.alert("Atenção", "Cadastro da pessoa idosa não encontrado.");
+      // 1) acha o usuário pelo CPF (usuarios)
+      const usuarioDoc = await findUsuarioDocByCpf(cpfSess);
+      if (!usuarioDoc) {
+        Alert.alert("Atenção", "Responsável não encontrado.");
         return;
       }
-      const pessoa = pessoaSnap.data() || {};
-      const r = pessoa?.responsavel || {};
+      setUsuarioId(usuarioDoc.id);
 
+      const u = usuarioDoc.data() || {};
       setResponsavel({
-        nome: r?.nome || "—",
-        sexo: r?.sexo || "—",
-        nascimento: r?.dataNascimento || "—",
-        parentesco: r?.parentesco || "—",
-        foto: r?.fotoUrl || "https://i.pravatar.cc/150?img=12",
-        telefone: r?.telefone || "—",
-        email: r?.email || "—",
+        nome: u?.nome || "—",
+        sexo: u?.sexo || "—", // pode nem existir; deixamos opcional
+        nascimento: u?.data_nascimento || "—",
+        parentesco: u?.parentesco || "—", // opcional
+        foto: u?.fotoUrl || "https://i.pravatar.cc/150?img=12",
+        telefone: u?.telefone || "—",
+        email: u?.email || "—",
       });
+
       setIsChanged(false);
       setFotoLocalUri(null);
     } catch (e) {
@@ -121,10 +157,10 @@ export default function PerfilResponsavelScreen() {
     setIsChanged(true);
   };
 
-  // Troca de foto: faz upload e salva no Firestore IMEDIATAMENTE
+  // Troca de foto: faz upload e salva no Firestore IMEDIATAMENTE em usuarios/<usuarioId>
   const handlePickPhoto = async () => {
     try {
-      if (!cpf) {
+      if (!usuarioId) {
         Alert.alert("Sessão inválida", "Entre novamente para continuar.");
         return;
       }
@@ -134,16 +170,16 @@ export default function PerfilResponsavelScreen() {
       // preview instantâneo
       setFotoLocalUri(uri);
 
-      // sobe pro Storage e salva no Firestore
+      // sobe pro Storage e salva
       const newFotoUrl = await uploadToStorage(
         uri,
-        `pessoaIdosa/${cpf}/responsavel/perfil.jpg`
+        `usuarios/${usuarioId}/perfil.jpg`
       );
 
       await setDoc(
-        doc(db, "pessoaIdosa", cpf),
+        doc(db, "usuarios", usuarioId),
         {
-          responsavel: { fotoUrl: newFotoUrl },
+          fotoUrl: newFotoUrl,
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -160,25 +196,26 @@ export default function PerfilResponsavelScreen() {
   };
 
   const handleSave = async () => {
-    if (!cpf) return;
+    if (!usuarioId) return;
     try {
       setSaving(true);
 
       // normaliza "—"
       const normalize = (v) => (v === "—" ? "" : v || "");
       const payload = {
-        responsavel: {
-          nome: normalize(responsavel.nome),
-          sexo: normalize(responsavel.sexo),
-          dataNascimento: normalize(responsavel.nascimento),
-          parentesco: normalize(responsavel.parentesco),
-          telefone: normalize(responsavel.telefone),
-          email: normalize(responsavel.email),
-        },
+        nome: normalize(responsavel.nome),
+        // esses 2 abaixo não estão no schema do model do backend,
+        // mas tudo bem manter no Firestore pelo app (chaves opcionais):
+        sexo: normalize(responsavel.sexo),
+        parentesco: normalize(responsavel.parentesco),
+
+        data_nascimento: normalize(responsavel.nascimento),
+        telefone: normalize(responsavel.telefone),
+        email: normalize(responsavel.email),
         updatedAt: serverTimestamp(),
       };
 
-      await setDoc(doc(db, "pessoaIdosa", cpf), payload, { merge: true });
+      await setDoc(doc(db, "usuarios", usuarioId), payload, { merge: true });
 
       setIsChanged(false);
       setModalVisible(true);
@@ -190,7 +227,7 @@ export default function PerfilResponsavelScreen() {
     }
   };
 
-  if (loading && !responsavel) {
+  if (loading && !usuarioId) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <Appheader styles={appHeaderStyles} />
@@ -259,7 +296,7 @@ export default function PerfilResponsavelScreen() {
             onChangeText={(text) => handleChange("nascimento", text)}
             keyboardType="number-pad"
             returnKeyType="next"
-            placeholder="DD/MM/AAAA"
+            placeholder="AAAA-MM-DD"
           />
 
           <Text style={styles.label}>Parentesco com a Pessoa Idosa</Text>
@@ -286,6 +323,7 @@ export default function PerfilResponsavelScreen() {
             onChangeText={(text) => handleChange("email", text)}
             keyboardType="email-address"
             returnKeyType="done"
+            autoCapitalize="none"
           />
 
           <TouchableOpacity
@@ -330,165 +368,44 @@ export default function PerfilResponsavelScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#FFF6ED",
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-  },
-  titulo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#3B2C1A",
-    textAlign: "center",
-  },
-  subtitulo: {
-    color: "#7A6A59",
-    textAlign: "center",
-    marginBottom: 16,
-  },
+  safeArea: { flex: 1, backgroundColor: "#FFF6ED" },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
+  titulo: { fontSize: 24, fontWeight: "bold", color: "#3B2C1A", textAlign: "center" },
+  subtitulo: { color: "#7A6A59", textAlign: "center", marginBottom: 16 },
   cardPerfil: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    alignItems: "center",
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    backgroundColor: "#fff", borderRadius: 20, alignItems: "center", padding: 20, marginBottom: 16,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
   },
-  foto: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    marginBottom: 10,
-    borderWidth: 3,
-    borderColor: "#E7DAC8",
-  },
-  btnTrocar: {
-    backgroundColor: BROWN,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    marginBottom: 8,
-  },
+  foto: { width: 110, height: 110, borderRadius: 55, marginBottom: 10, borderWidth: 3, borderColor: "#E7DAC8" },
+  btnTrocar: { backgroundColor: BROWN, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 8 },
   btnTrocarText: { color: "#fff", fontWeight: "bold" },
-  nome: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#3B2C1A",
-  },
-  info: {
-    color: "#7A6A59",
-    marginBottom: 12,
-  },
+  nome: { fontSize: 20, fontWeight: "bold", color: "#3B2C1A" },
+  info: { color: "#7A6A59", marginBottom: 12 },
   cardInfo: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    backgroundColor: "#fff", borderRadius: 16, padding: 20, marginBottom: 16,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#4B2E0F",
-  },
-  tracinho: {
-    height: 2,
-    backgroundColor: "#4B2E0F",
-    marginTop: 4,
-    marginBottom: 10,
-    borderRadius: 2,
-  },
-  label: {
-    color: "#4B2E0F",
-    fontWeight: "600",
-    marginTop: 10,
-    marginBottom: 5,
-  },
+  sectionTitle: { fontSize: 18, fontWeight: "700", color: "#4B2E0F" },
+  tracinho: { height: 2, backgroundColor: "#4B2E0F", marginTop: 4, marginBottom: 10, borderRadius: 2 },
+  label: { color: "#4B2E0F", fontWeight: "600", marginTop: 10, marginBottom: 5 },
   input: {
-    backgroundColor: "#fff",
-    borderWidth: 1.3,
-    borderColor: "#C7A98D",
-    borderRadius: 10,
-    padding: 10,
-    color: "#4B2E0F",
-    fontSize: 14,
+    backgroundColor: "#fff", borderWidth: 1.3, borderColor: "#C7A98D", borderRadius: 10, padding: 10, color: "#4B2E0F", fontSize: 14,
   },
   botao: {
-    backgroundColor: BROWN,
-    borderRadius: 10,
-    paddingVertical: 12,
-    marginTop: 20,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 3,
+    backgroundColor: BROWN, borderRadius: 10, paddingVertical: 12, marginTop: 20, alignItems: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 5, elevation: 3,
   },
-  botaoDesabilitado: {
-    opacity: 0.6,
-  },
-  botaoTexto: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 15,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  botaoDesabilitado: { opacity: 0.6 },
+  botaoTexto: { color: "#fff", fontWeight: "bold", fontSize: 15 },
+  overlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)", justifyContent: "center", alignItems: "center" },
   popup: {
-    backgroundColor: "#fff",
-    width: "80%",
-    borderRadius: 16,
-    paddingVertical: 25,
-    paddingHorizontal: 20,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 6,
+    backgroundColor: "#fff", width: "80%", borderRadius: 16, paddingVertical: 25, paddingHorizontal: 20,
+    alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 6,
   },
-  popupTitulo: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#4B2E0F",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  popupTexto: {
-    fontSize: 14,
-    color: "#7A6A59",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  popupBotao: {
-    backgroundColor: BROWN,
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 25,
-  },
-  popupBotaoTexto: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 15,
-  },
+  popupTitulo: { fontSize: 18, fontWeight: "bold", color: "#4B2E0F", marginBottom: 10, textAlign: "center" },
+  popupTexto: { fontSize: 14, color: "#7A6A59", textAlign: "center", marginBottom: 20 },
+  popupBotao: { backgroundColor: BROWN, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 25 },
+  popupBotaoTexto: { color: "#fff", fontWeight: "bold", fontSize: 15 },
 });
 
 /* Appheader */
@@ -502,16 +419,6 @@ const appHeaderStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E2D8CF",
   },
-  appLogo: {
-    width: 42,
-    height: 42,
-    marginRight: 10,
-    resizeMode: "contain",
-    borderRadius: 21,
-  },
-  appTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#3B2C1F",
-  },
+  appLogo: { width: 42, height: 42, marginRight: 10, resizeMode: "contain", borderRadius: 21 },
+  appTitle: { fontSize: 20, fontWeight: "700", color: "#3A2C1F" },
 });
