@@ -1,0 +1,17 @@
+# Node / Expo
+node_modules/
+.expo/
+.expo-shared/
+web-build/
+
+# Java / Spring
+target/
+*.log
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
