@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Expo Mobile Frame</title>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        height: 100vh;
+        margin: 0;
+        background: #111;
+        color: #ddd;
+        font-family: Arial, sans-serif;
+      }
+
+      .selector {
+        margin: 15px 0 5px 0;
+      }
+
+      select {
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        background: #222;
+        color: #ddd;
+        font-size: 14px;
+      }
+
+      .label-top {
+        margin-bottom: 5px;
+        font-size: 18px;
+        font-weight: bold;
+      }
+
+      .zoom-controls {
+        margin-bottom: 15px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .zoom-controls button {
+        padding: 4px 10px;
+        border: none;
+        border-radius: 6px;
+        background: #444;
+        color: #ddd;
+        cursor: pointer;
+      }
+
+      .zoom-controls button:hover {
+        background: #666;
+      }
+
+      #zoom-label {
+        display: inline-block;
+        min-width: 120px;
+        text-align: center;
+      }
+
+      .frame-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform-origin: top center;
+      }
+
+      .label-side {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        font-size: 14px;
+        margin: 0 8px;
+        color: #aaa;
+      }
+
+      iframe {
+        border: 16px solid #333;
+        border-radius: 40px;
+        background: white;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Seletor de celular -->
+    <div class="selector">
+      <label for="device">Escolha o celular:</label>
+      <select id="device">
+        <option value="galaxy">Samsung Galaxy A15 5G (390 × 845)</option>
+        <option value="iphone">iPhone 14 Pro (393 × 852)</option>
+        <option value="pixel">Google Pixel 7 (412 × 915)</option>
+        <option value="ipad">iPad Mini (768 × 1024)</option>
+      </select>
+    </div>
+
+    <!-- Nome do celular -->
+    <div id="device-name" class="label-top">Samsung Galaxy A15 5G</div>
+
+    <!-- Controles de zoom -->
+    <div class="zoom-controls">
+      <button id="zoom-in">+</button>
+      <span id="zoom-label">100% (padrão)</span>
+      <button id="zoom-out">-</button>
+    </div>
+
+    <!-- Preview com dimensões -->
+    <div id="frame-container" class="frame-wrapper">
+      <div id="height-label" class="label-side">845px</div>
+      <iframe
+        id="preview"
+        src="http://localhost:8081"
+        title="Expo App"
+        width="390"
+        height="845"
+      ></iframe>
+      <div id="width-label" class="label-side">390px</div>
+    </div>
+
+    <script>
+      const devices = {
+        galaxy: { name: "Samsung Galaxy A15 5G", w: 390, h: 845 },
+        iphone: { name: "iPhone 14 Pro", w: 393, h: 852 },
+        pixel: { name: "Google Pixel 7", w: 412, h: 915 },
+        ipad: { name: "iPad Mini", w: 768, h: 1024 },
+      };
+
+      const select = document.getElementById("device");
+      const iframe = document.getElementById("preview");
+      const nameLabel = document.getElementById("device-name");
+      const widthLabel = document.getElementById("width-label");
+      const heightLabel = document.getElementById("height-label");
+      const zoomIn = document.getElementById("zoom-in");
+      const zoomOut = document.getElementById("zoom-out");
+      const zoomLabel = document.getElementById("zoom-label");
+      const frameContainer = document.getElementById("frame-container");
+
+      let zoom = 1.0;
+
+      function updateZoom() {
+        frameContainer.style.transform = `scale(${zoom})`;
+        const percent = Math.round(zoom * 100);
+        zoomLabel.textContent =
+          percent + "% " + (percent === 100 ? "(padrão)" : "");
+      }
+
+      zoomIn.addEventListener("click", () => {
+        zoom += 0.05;
+        updateZoom();
+      });
+
+      zoomOut.addEventListener("click", () => {
+        if (zoom > 0.1) {
+          zoom -= 0.05;
+          updateZoom();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "+" || event.key === "=") {
+          zoom += 0.05;
+          updateZoom();
+        } else if (event.key === "-") {
+          if (zoom > 0.1) {
+            zoom -= 0.05;
+            updateZoom();
+          }
+        }
+      });
+
+      select.addEventListener("change", () => {
+        const d = devices[select.value];
+        iframe.width = d.w;
+        iframe.height = d.h;
+        nameLabel.textContent = d.name;
+        widthLabel.textContent = d.w + "px";
+        heightLabel.textContent = d.h + "px";
+        zoom = 1.0;
+        updateZoom();
+      });
+
+      // inicial
+      iframe.width = devices.galaxy.w;
+      iframe.height = devices.galaxy.h;
+      updateZoom();
+    </script>
+  </body>
+</html>
