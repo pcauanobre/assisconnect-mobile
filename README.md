@@ -3,6 +3,8 @@
 Continuação direta do **AssisConnect Web**, agora voltado para **mobile** (com preview web).
 Projeto fullstack onde o backend em Java expõe uma API REST e o frontend em React Native (Expo) consome essa API.
 
+Este projeto foi adaptado para **ambiente acadêmico (faculdade)**, onde não é possível instalar softwares nem alterar variáveis de ambiente do sistema.
+
 ---
 
 ## Tecnologias Utilizadas
@@ -10,7 +12,7 @@ Projeto fullstack onde o backend em Java expõe uma API REST e o frontend em Rea
 ### Backend
 - Java 17+
 - MySQL
-- Maven
+- Maven (modo alternativo / local)
 
 ### Frontend
 - React Native
@@ -21,85 +23,67 @@ Projeto fullstack onde o backend em Java expõe uma API REST e o frontend em Rea
 
 ---
 
-## Maven (o que é e por que precisa)
+## Maven (modo alternativo – ambiente de faculdade)
 
-### 1) O que é o Maven
-O Maven é o **gerenciador de build do Java**, equivalente ao npm no mundo JavaScript.
+### O problema
+Em computadores de faculdade:
+- Não é permitido instalar o Maven
+- Não é permitido alterar o PATH ou variáveis de ambiente
 
-Ele é responsável por:
-- Baixar dependências do projeto
-- Compilar o código Java
-- Executar o backend
-
-Sem o Maven instalado e configurado corretamente, o backend **não roda**.
+Por isso, **não é possível usar o comando `mvn` tradicional**.
 
 ---
 
-## Instalação do Maven (Windows)
+### A solução adotada neste projeto
+Este projeto utiliza uma **forma alternativa de execução do Maven**, permitindo rodar o backend **sem instalar Maven no sistema**.
 
-### 1) Baixar e extrair
-- Acesse: https://maven.apache.org/download.cgi
-- Baixe a versão ZIP do Maven
-- Extraia o conteúdo para a pasta (padrão recomendado):
-  - C:\maven
-
-Após extrair, confirme que existe o arquivo:
-- C:\maven\bin\mvn.cmd
-
----
-
-### 2) Adicionar o Maven no PATH (obrigatório)
-- Abra: Painel de Controle
-- Sistema
-- Configurações avançadas do sistema
-- Variáveis de Ambiente
-- Em "Variáveis do sistema", selecione "Path"
-- Clique em Editar -> Novo
-- Adicione:
-  - C:\maven\bin
-
-Salve tudo, feche as janelas e **reabra o terminal**.
-
----
-
-### 3) Testar o Maven
-Abra o PowerShell ou CMD e execute:
-
-  mvn -v
-
-Se aparecer a versão do Maven, a instalação está correta.
+O Maven é executado localmente a partir do próprio projeto, garantindo que:
+- O backend funcione em qualquer computador
+- Nenhuma configuração de sistema seja necessária
+- O projeto rode normalmente em ambiente acadêmico
 
 ---
 
 ## Como rodar o projeto
 
-### Backend (API)
+## Backend (API)
 
-#### 1) Acessar a pasta do backend
-No terminal, na raiz do projeto:
+### 1) Acessar a pasta do backend
+No terminal, a partir da raiz do projeto:
 
   cd backend
 
-#### 2) Executar o backend
-  mvn spring-boot:run
+### 2) Rodar o backend (modo alternativo – SEM Maven instalado)
+Use o comando abaixo:
 
-#### 3) API em execução
-A API ficará disponível em:
+  .\mvnw spring-boot:run
+
+Esse comando:
+- Baixa automaticamente tudo que o projeto precisa
+- Compila o backend
+- Inicia a API
+
+Nenhuma instalação adicional é necessária.
+
+---
+
+### 3) API em execução
+Após iniciar, a API estará disponível em:
 - http://localhost:8080
 
 ---
 
-### Frontend (Expo)
+## Frontend (Expo)
 
-#### 1) Acessar a pasta do frontend
+### 1) Acessar a pasta do frontend
 No terminal, a partir da raiz do projeto:
 
   cd frontend
 
-#### 2) Instalar dependências
+### 2) Instalar dependências
   npm install
 
-#### 3) Rodar preview web
+### 3) Rodar preview web
   npx expo start --web --port 8081
 
 Acesse no navegador:
@@ -107,14 +91,19 @@ Acesse no navegador:
 
 ---
 
-### Rodar no celular (Expo Go)
+## Rodar no celular (Expo Go)
 
-#### 1) Iniciar o Expo
+### 1) Iniciar o Expo
   npx expo start --port 8081
 
-#### 2) No celular
-- Instale o app **Expo Go**
-- Abra o Expo Go
+### 2) No celular
+- Instale o aplicativo **Expo Go**
+- Conecte o celular na mesma rede do computador
 - Escaneie o QR Code exibido no terminal
 
+O aplicativo será carregado diretamente no celular.
+
 ---
+
+## Observação Importante
+Este método foi escolhido especificamente para **ambiente de faculdade**, garantindo que o projeto rode sem permissões administrativas, instalações externas ou alterações no sistema operacional.
