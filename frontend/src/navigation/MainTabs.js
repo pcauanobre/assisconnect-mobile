@@ -46,7 +46,7 @@ export default function MainTabs() {
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{ title: 'Inicio' }}
+        options={{ headerShown: false, title: 'Inicio' }}
       />
       <Tab.Screen
         name="Idosos"
