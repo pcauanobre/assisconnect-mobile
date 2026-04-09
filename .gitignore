@@ -3,15 +3,24 @@ node_modules/
 .expo/
 .expo-shared/
 web-build/
+dist/
 
 # Java / Spring
 target/
 *.log
+*.jar
+!backend/tools/maven/**/*.jar
 
 # IDE
 .idea/
 .vscode/
+*.iml
 
 # OS
 .DS_Store
 Thumbs.db
+*.swp
+
+# Environment
+.env
+.env.local
