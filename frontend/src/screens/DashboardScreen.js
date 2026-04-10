@@ -9,11 +9,13 @@ import { getIdososCount, getAniversariantesDoMes } from '../services/idosoServic
 import { getCardapioHoje } from '../services/cardapioService';
 import { getAtividadesHoje } from '../services/atividadeService';
 import { getUsuariosCount } from '../services/usuarioService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StatCard from '../components/StatCard';
 import colors from '../theme/colors';
 
 export default function DashboardScreen({ navigation }) {
   const { user, logout } = useAuth();
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ idosos: 0, aniversarios: 0, atividades: 0, colaboradores: 0 });
   const [menuHoje, setMenuHoje] = useState(null);
@@ -78,10 +80,9 @@ export default function DashboardScreen({ navigation }) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
     >
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Painel de Administracao</Text>
-          <Text style={styles.headerSub}>Bem-vindo, {user?.nome || user?.usuario || 'Usuario'}</Text>
+      <View style={[styles.header, { height: 56 + insets.top, paddingTop: insets.top }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Inicio</Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable onPress={() => navigation.navigate('Profile')} style={styles.headerBtn}>
@@ -188,14 +189,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   header: {
     backgroundColor: colors.primary,
-    padding: 20,
-    paddingTop: 50,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.white },
-  headerSub: { fontSize: 13, color: colors.accent, marginTop: 2 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.white },
   headerActions: { flexDirection: 'row', gap: 10 },
   headerBtn: {
     width: 36, height: 36, borderRadius: 18,
@@ -210,10 +209,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
   },
   sectionTitle: {
     fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 10,

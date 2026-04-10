@@ -7,6 +7,7 @@ import IdosoCard from '../../components/IdosoCard';
 import SearchBar from '../../components/SearchBar';
 import FilterModal from '../../components/FilterModal';
 import LoadingOverlay from '../../components/LoadingOverlay';
+import ScreenHeader from '../../components/ScreenHeader';
 import colors from '../../theme/colors';
 
 export default function IdososListScreen({ navigation }) {
@@ -96,6 +97,7 @@ export default function IdososListScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Idosos" />
       <View style={styles.searchRow}>
         <View style={{ flex: 1 }}>
           <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar por nome..." />
@@ -163,9 +165,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center',
     elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
   },
 });

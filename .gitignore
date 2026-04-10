@@ -21,6 +21,9 @@ target/
 Thumbs.db
 *.swp
 
+# Frontend web (projeto separado, nao faz parte do mobile)
+frontend-web/
+
 # Environment
 .env
 .env.local

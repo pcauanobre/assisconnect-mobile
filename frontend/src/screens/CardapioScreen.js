@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getCardapio } from '../services/cardapioService';
 import MealEditModal from '../components/MealEditModal';
 import LoadingOverlay from '../components/LoadingOverlay';
+import ScreenHeader from '../components/ScreenHeader';
 import colors from '../theme/colors';
 
 const DIAS = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado', 'Domingo'];
@@ -51,6 +52,7 @@ export default function CardapioScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Cardapio" />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
@@ -100,8 +102,7 @@ const styles = StyleSheet.create({
   dayCard: {
     backgroundColor: colors.white, borderRadius: 12, padding: 14,
     marginBottom: 10, elevation: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 2,
+    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
   },
   dayHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

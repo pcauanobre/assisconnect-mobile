@@ -11,15 +11,15 @@ export default function IdososStack() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: colors.primary },
+        headerStyle: { backgroundColor: colors.primary, height: 56 },
         headerTintColor: colors.white,
-        headerTitleStyle: { fontWeight: '700' },
+        headerTitleStyle: { fontWeight: '700', fontSize: 18 },
       }}
     >
       <Stack.Screen
         name="IdososList"
         component={IdososListScreen}
-        options={{ title: 'Idosos' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="IdosoDetail"
