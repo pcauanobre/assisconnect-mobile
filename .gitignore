@@ -28,9 +28,5 @@ frontend-web/
 .env
 .env.local
 
-# Dev pessoal (nao commitar)
-CLAUDE.md
-CONTEXTO-DEV.md
-TUTORIAL-COMMITS.txt
-DEV-GUIDE.md
+# Claude CLI
 .claude/
