@@ -66,3 +66,43 @@ INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Sabado',  'jantar', '
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Domingo', 'cafe',   'Bolo simples com leite e fruta',           240);
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Domingo', 'almoco', 'Frango assado com batata e salada',        530);
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Domingo', 'jantar', 'Sanduiche natural com suco',               290);
+
+-- Medicamentos (RF10)
+INSERT INTO medicamentos (idoso_id, nome, dosagem, horarios, frequencia, observacoes, ativo, data_cadastro)
+VALUES (1, 'Losartana',      '50mg',   '08:00, 20:00', '12/12h',   'Controle de hipertensao',  true, '2025-01-12');
+INSERT INTO medicamentos (idoso_id, nome, dosagem, horarios, frequencia, observacoes, ativo, data_cadastro)
+VALUES (1, 'Metformina',     '850mg',  '08:00, 12:00, 20:00', '8/8h', 'Controle de glicemia', true, '2025-01-12');
+INSERT INTO medicamentos (idoso_id, nome, dosagem, horarios, frequencia, observacoes, ativo, data_cadastro)
+VALUES (2, 'Ibuprofeno',     '400mg',  '12:00', 'Diario', 'Dor articular',                    true, '2025-01-20');
+INSERT INTO medicamentos (idoso_id, nome, dosagem, horarios, frequencia, observacoes, ativo, data_cadastro)
+VALUES (3, 'Donepezila',     '10mg',   '22:00', 'Diario noturno', 'Para Alzheimer',           true, '2025-02-05');
+INSERT INTO medicamentos (idoso_id, nome, dosagem, horarios, frequencia, observacoes, ativo, data_cadastro)
+VALUES (4, 'Furosemida',     '40mg',   '08:00', 'Diario', 'Diuretico - cardiaco',             true, '2025-02-12');
+INSERT INTO medicamentos (idoso_id, nome, dosagem, horarios, frequencia, observacoes, ativo, data_cadastro)
+VALUES (6, 'Levodopa',       '250mg',  '06:00, 14:00, 22:00', '8/8h', 'Parkinson',            true, '2025-03-22');
+
+-- Registros de saude (RF11)
+INSERT INTO registros_saude (idoso_id, data, peso, pressao_sistolica, pressao_diastolica, temperatura, glicemia, observacoes)
+VALUES (1, '2026-01-15', 68.5, 130, 85, 36.5, 110, 'Estavel');
+INSERT INTO registros_saude (idoso_id, data, peso, pressao_sistolica, pressao_diastolica, temperatura, glicemia, observacoes)
+VALUES (1, '2026-02-18', 69.0, 125, 80, 36.4, 105, 'Melhora no controle glicemico');
+INSERT INTO registros_saude (idoso_id, data, peso, pressao_sistolica, pressao_diastolica, temperatura, glicemia, observacoes)
+VALUES (1, '2026-03-19', 68.2, 128, 82, 36.6, 108, '');
+INSERT INTO registros_saude (idoso_id, data, peso, pressao_sistolica, pressao_diastolica, temperatura, glicemia, observacoes)
+VALUES (1, '2026-04-20', 67.8, 122, 78, 36.5, 102, 'Bom progresso');
+INSERT INTO registros_saude (idoso_id, data, peso, pressao_sistolica, pressao_diastolica, temperatura, glicemia, observacoes)
+VALUES (2, '2026-04-10', 75.0, 140, 90, 36.7, 95, 'Pressao um pouco alta');
+INSERT INTO registros_saude (idoso_id, data, peso, pressao_sistolica, pressao_diastolica, temperatura, glicemia, observacoes)
+VALUES (3, '2026-04-05', 62.4, 120, 75, 36.3, 90, '');
+
+-- Visitas (RF13)
+INSERT INTO visitas (idoso_id, data_visita, nome_visitante, parentesco, observacoes)
+VALUES (1, '2026-04-18', 'Carlos Silva',    'Filho',      'Trouxe fotos da familia');
+INSERT INTO visitas (idoso_id, data_visita, nome_visitante, parentesco, observacoes)
+VALUES (1, '2026-03-22', 'Paula Silva',     'Neta',       'Visita curta, bem-humorada');
+INSERT INTO visitas (idoso_id, data_visita, nome_visitante, parentesco, observacoes)
+VALUES (2, '2026-04-15', 'Ana Santos',      'Filha',      'Conversou bastante');
+INSERT INTO visitas (idoso_id, data_visita, nome_visitante, parentesco, observacoes)
+VALUES (3, '2026-02-10', 'Paulo Oliveira',  'Sobrinho',   'Levou para passeio no jardim');
+INSERT INTO visitas (idoso_id, data_visita, nome_visitante, parentesco, observacoes)
+VALUES (5, '2026-04-20', 'Rita Pereira',    'Filha',      'Conversa animada');
