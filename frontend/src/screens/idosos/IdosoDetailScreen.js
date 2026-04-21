@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Image, StyleSheet } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { getIdoso } from '../../services/idosoService';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import colors from '../../theme/colors';
+import { gerarPDFFichaIdoso } from '../../utils/pdfGenerator';
 
-export default function IdosoDetailScreen({ route }) {
+export default function IdosoDetailScreen({ route, navigation }) {
   const { id } = route.params;
   const [idoso, setIdoso] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
 
-  useEffect(() => {
-    loadIdoso();
-  }, []);
+  useFocusEffect(useCallback(() => { loadIdoso(); }, []));
 
   async function loadIdoso() {
     try {
@@ -35,11 +36,29 @@ export default function IdosoDetailScreen({ route }) {
     return idade;
   }
 
+  async function exportarPDF() {
+    try {
+      setExportando(true);
+      await gerarPDFFichaIdoso(idoso);
+    } catch (e) {
+      Alert.alert('Erro', 'Nao foi possivel gerar o PDF.');
+    } finally {
+      setExportando(false);
+    }
+  }
+
   if (loading) return <LoadingOverlay />;
   if (!idoso) return <Text style={{ padding: 20 }}>Idoso nao encontrado.</Text>;
 
   const statusLabel = idoso.falecido ? 'Falecido' : idoso.inativo ? 'Inativo' : 'Ativo';
   const statusColor = idoso.falecido ? colors.textSecondary : idoso.inativo ? '#F59E0B' : colors.success;
+
+  const quickActions = [
+    { key: 'Medicamentos', icon: 'activity', label: 'Medicamentos', color: '#16a34a' },
+    { key: 'Saude', icon: 'heart', label: 'Saude', color: '#dc2626' },
+    { key: 'Visitas', icon: 'users', label: 'Visitas', color: '#2563eb' },
+    { key: 'HistoricoPresenca', icon: 'calendar', label: 'Presenca', color: '#d97706' },
+  ];
 
   const sections = [
     {
@@ -80,7 +99,6 @@ export default function IdosoDetailScreen({ route }) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Photo & Status */}
       <View style={styles.photoSection}>
         {idoso.fotoUrl ? (
           <Image source={{ uri: idoso.fotoUrl }} style={styles.photo} />
@@ -95,7 +113,34 @@ export default function IdosoDetailScreen({ route }) {
         </View>
       </View>
 
-      {/* Sections */}
+      <View style={styles.quickActionsRow}>
+        {quickActions.map((a) => (
+          <TouchableOpacity
+            key={a.key}
+            style={styles.quickAction}
+            onPress={() =>
+              navigation.navigate(a.key, { idosoId: idoso.id, idosoNome: idoso.nome })
+            }
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: a.color }]}>
+              <Feather name={a.icon} size={18} color={colors.white} />
+            </View>
+            <Text style={styles.quickActionLabel}>{a.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <TouchableOpacity
+        style={styles.pdfButton}
+        onPress={exportarPDF}
+        disabled={exportando}
+      >
+        <Feather name="file-text" size={16} color={colors.white} />
+        <Text style={styles.pdfButtonText}>
+          {exportando ? 'Gerando PDF...' : 'Ficha Completa em PDF'}
+        </Text>
+      </TouchableOpacity>
+
       {sections.map((section, si) => (
         <View key={si} style={styles.section}>
           <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -122,6 +167,20 @@ const styles = StyleSheet.create({
   name: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginTop: 10 },
   badge: { marginTop: 6, paddingHorizontal: 12, paddingVertical: 3, borderRadius: 12 },
   badgeText: { fontSize: 12, color: colors.white, fontWeight: '700' },
+  quickActionsRow: {
+    flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 12, paddingBottom: 8,
+  },
+  quickAction: { alignItems: 'center', flex: 1 },
+  quickActionIcon: {
+    width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center',
+  },
+  quickActionLabel: { fontSize: 11, color: colors.textPrimary, marginTop: 6, fontWeight: '600' },
+  pdfButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: colors.primary, marginHorizontal: 12, marginBottom: 6,
+    paddingVertical: 11, borderRadius: 10,
+  },
+  pdfButtonText: { color: colors.white, fontWeight: '700', fontSize: 13 },
   section: {
     backgroundColor: colors.white, marginHorizontal: 12, marginTop: 12,
     borderRadius: 12, padding: 14, elevation: 1,
