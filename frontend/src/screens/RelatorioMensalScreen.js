@@ -11,6 +11,8 @@ import {
 } from '../services/relatorioService';
 import ScreenHeader from '../components/ScreenHeader';
 import colors from '../theme/colors';
+import { gerarPDFRelatorio } from '../utils/pdfGenerator';
+import { getDadosCompletosRelatorio } from '../services/relatorioExportService';
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
@@ -339,6 +341,21 @@ export default function RelatorioMensalScreen() {
                             )}
                           </Pressable>
                         )}
+
+                        <Pressable
+                          style={({ pressed }) => [styles.pdfBtn, pressed && { opacity: 0.8 }]}
+                          onPress={async () => {
+                            try {
+                              const res = await getDadosCompletosRelatorio(mes, anoSelecionado);
+                              await gerarPDFRelatorio(res.data, mes, anoSelecionado);
+                            } catch (e) {
+                              Alert.alert('Erro', 'Falha ao obter dados para o PDF.');
+                            }
+                          }}
+                        >
+                          <Feather name="file-text" size={14} color={colors.white} />
+                          <Text style={styles.pdfBtnText}>Exportar PDF</Text>
+                        </Pressable>
                       </>
                     )}
                   </View>
@@ -478,6 +495,11 @@ const styles = StyleSheet.create({
     borderRadius: 10, alignItems: 'center',
   },
   saveBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  pdfBtn: {
+    marginTop: 10, backgroundColor: '#7c3aed', paddingVertical: 12, borderRadius: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  pdfBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
   // Modal
   modalOverlay: {

@@ -108,6 +108,24 @@ public class RelatorioMensalController {
         return calcularEstatisticas(mes, ano);
     }
 
+    // Dados completos do relatorio mensal (usado pela exportacao em PDF)
+    @GetMapping("/{mes}/{ano}/dados-completos")
+    public java.util.Map<String, Object> dadosCompletos(@PathVariable int mes, @PathVariable int ano) {
+        java.util.Map<String, Object> resultado = new java.util.HashMap<>();
+        RelatorioEstatisticoDTO stats = calcularEstatisticas(mes, ano);
+        LocalDate fimDoMes = YearMonth.of(ano, mes).atEndOfMonth();
+        List<Idoso> todos = idosoRepository.findAllCriadosAte(fimDoMes);
+        Optional<RelatorioMensal> rel = relatorioRepository.findByMesAndAno(mes, ano);
+
+        resultado.put("mes", mes);
+        resultado.put("ano", ano);
+        resultado.put("estatisticas", stats);
+        resultado.put("idosos", todos);
+        resultado.put("observacoes", rel.map(RelatorioMensal::getObservacoes).orElse(""));
+        resultado.put("fechado", rel.map(RelatorioMensal::isFechado).orElse(false));
+        return resultado;
+    }
+
     // ============================================================
     // Metodos auxiliares
     // ============================================================
