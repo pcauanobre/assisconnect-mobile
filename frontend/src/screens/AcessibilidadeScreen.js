@@ -6,7 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import ScreenHeader from '../components/ScreenHeader';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
-export default function AcessibilidadeScreen() {
+export default function AcessibilidadeScreen({ navigation }) {
   const { config, setFontScale, setHighContrast, setDarkMode, scale, activeColors: c } = useAccessibility();
 
   const ESCALAS = [
@@ -17,7 +17,7 @@ export default function AcessibilidadeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.surface }}>
-      <ScreenHeader title="Acessibilidade" />
+      <ScreenHeader title="Acessibilidade" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: 12 }}>
 
         {/* Tamanho da fonte */}
