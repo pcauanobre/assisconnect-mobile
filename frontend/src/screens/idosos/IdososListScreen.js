@@ -8,9 +8,10 @@ import SearchBar from '../../components/SearchBar';
 import FilterModal from '../../components/FilterModal';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import ScreenHeader from '../../components/ScreenHeader';
-import colors from '../../theme/colors';
+import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 export default function IdososListScreen({ navigation }) {
+  const { activeColors: c, scale } = useAccessibility();
   const [idosos, setIdosos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -96,14 +97,14 @@ export default function IdososListScreen({ navigation }) {
   const filtered = getFilteredList();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: c.surface }]}>
       <ScreenHeader title="Idosos" />
       <View style={styles.searchRow}>
         <View style={{ flex: 1 }}>
           <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar por nome..." />
         </View>
-        <Pressable style={styles.filterBtn} onPress={() => setShowFilter(true)}>
-          <Feather name="filter" size={20} color={colors.white} />
+        <Pressable style={[styles.filterBtn, { backgroundColor: c.primary }]} onPress={() => setShowFilter(true)}>
+          <Feather name="filter" size={20} color={c.white} />
         </Pressable>
       </View>
 
@@ -121,16 +122,16 @@ export default function IdososListScreen({ navigation }) {
           />
         )}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>Nenhum idoso encontrado</Text>
+          <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(14) }]}>Nenhum idoso encontrado</Text>
         }
       />
 
       {/* FAB */}
       <Pressable
-        style={styles.fab}
+        style={[styles.fab, { backgroundColor: c.primary }]}
         onPress={() => navigation.navigate('IdosoForm', {})}
       >
-        <Feather name="plus" size={24} color={colors.white} />
+        <Feather name="plus" size={24} color={c.white} />
       </Pressable>
 
       <FilterModal
@@ -144,25 +145,23 @@ export default function IdososListScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
+  container: { flex: 1 },
   searchRow: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 12, paddingTop: 12, gap: 8,
   },
   filterBtn: {
     width: 42, height: 42, borderRadius: 10,
-    backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
     marginBottom: 12,
   },
   list: { paddingHorizontal: 8, paddingBottom: 80 },
   emptyText: {
     textAlign: 'center', marginTop: 40,
-    color: colors.textSecondary, fontSize: 14,
   },
   fab: {
     position: 'absolute', bottom: 20, right: 20,
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center',
     elevation: 5,
     boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',

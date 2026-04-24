@@ -10,7 +10,7 @@ import {
   gerarPendentes, getRelatoriosPorAno,
 } from '../services/relatorioService';
 import ScreenHeader from '../components/ScreenHeader';
-import colors from '../theme/colors';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 import { gerarPDFRelatorio } from '../utils/pdfGenerator';
 import { getDadosCompletosRelatorio } from '../services/relatorioExportService';
 
@@ -20,6 +20,7 @@ const MESES = [
 ];
 
 export default function RelatorioMensalScreen() {
+  const { activeColors: c, scale } = useAccessibility();
   const anoReal = new Date().getFullYear();
   const mesReal = new Date().getMonth() + 1;
 
@@ -189,38 +190,38 @@ export default function RelatorioMensalScreen() {
       <>
         <View style={styles.statsGrid}>
           <View style={[styles.statItem, { backgroundColor: '#f0e6d9' }]}>
-            <Text style={styles.statValue}>{data.quantidadeIdosos}</Text>
-            <Text style={styles.statLabel}>Total Idosos</Text>
+            <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{data.quantidadeIdosos}</Text>
+            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Total Idosos</Text>
           </View>
           <View style={[styles.statItem, { backgroundColor: '#d9f0d9' }]}>
-            <Text style={[styles.statValue, { color: '#16a34a' }]}>{data.idososAtivos}</Text>
-            <Text style={styles.statLabel}>Ativos</Text>
+            <Text style={[styles.statValue, { color: '#16a34a', fontSize: scale(22) }]}>{data.idososAtivos}</Text>
+            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Ativos</Text>
           </View>
           <View style={[styles.statItem, { backgroundColor: '#f0f0d9' }]}>
-            <Text style={[styles.statValue, { color: '#ca8a04' }]}>{data.idososInativos}</Text>
-            <Text style={styles.statLabel}>Inativos</Text>
+            <Text style={[styles.statValue, { color: '#ca8a04', fontSize: scale(22) }]}>{data.idososInativos}</Text>
+            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Inativos</Text>
           </View>
           <View style={[styles.statItem, { backgroundColor: '#f0d9d9' }]}>
-            <Text style={[styles.statValue, { color: '#dc2626' }]}>{data.idososFalecidos}</Text>
-            <Text style={styles.statLabel}>Falecidos</Text>
+            <Text style={[styles.statValue, { color: '#dc2626', fontSize: scale(22) }]}>{data.idososFalecidos}</Text>
+            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Falecidos</Text>
           </View>
         </View>
         <View style={styles.statsGrid}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{data.novosCadastros}</Text>
-            <Text style={styles.statLabel}>Novos no mes</Text>
+          <View style={[styles.statItem, { backgroundColor: c.surfaceLight }]}>
+            <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{data.novosCadastros}</Text>
+            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Novos no mes</Text>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{typeof data.mediaIdade === 'number' ? data.mediaIdade.toFixed(1) : data.mediaIdade}</Text>
-            <Text style={styles.statLabel}>Media Idade</Text>
+          <View style={[styles.statItem, { backgroundColor: c.surfaceLight }]}>
+            <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{typeof data.mediaIdade === 'number' ? data.mediaIdade.toFixed(1) : data.mediaIdade}</Text>
+            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Media Idade</Text>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{data.idosoMaisVelho || '-'}</Text>
-            <Text style={styles.statLabel}>Mais velho</Text>
+          <View style={[styles.statItem, { backgroundColor: c.surfaceLight }]}>
+            <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{data.idosoMaisVelho || '-'}</Text>
+            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Mais velho</Text>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{data.idosoMaisNovo || '-'}</Text>
-            <Text style={styles.statLabel}>Mais novo</Text>
+          <View style={[styles.statItem, { backgroundColor: c.surfaceLight }]}>
+            <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{data.idosoMaisNovo || '-'}</Text>
+            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Mais novo</Text>
           </View>
         </View>
 
@@ -243,18 +244,18 @@ export default function RelatorioMensalScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+    <View style={{ flex: 1, backgroundColor: c.surface }}>
       <ScreenHeader title="Relatorios" />
 
       {/* Filtro de ano */}
-      <View style={styles.yearBar}>
+      <View style={[styles.yearBar, { backgroundColor: c.white, borderBottomColor: c.border }]}>
         <Pressable onPress={() => trocarAno(-1)} style={styles.yearArrow}>
-          <Feather name="chevron-left" size={18} color={colors.primary} />
+          <Feather name="chevron-left" size={18} color={c.primary} />
         </Pressable>
-        <Text style={styles.yearText}>{anoSelecionado}</Text>
+        <Text style={[styles.yearText, { color: c.primary, fontSize: scale(16) }]}>{anoSelecionado}</Text>
         {anoSelecionado < anoSimulado && (
           <Pressable onPress={() => trocarAno(1)} style={styles.yearArrow}>
-            <Feather name="chevron-right" size={18} color={colors.primary} />
+            <Feather name="chevron-right" size={18} color={c.primary} />
           </Pressable>
         )}
         {anoSelecionado >= anoSimulado && <View style={{ width: 30 }} />}
@@ -263,12 +264,12 @@ export default function RelatorioMensalScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}
       >
         {loadingAno ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={c.primary} style={{ marginTop: 40 }} />
         ) : mesesVisiveis.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhum relatorio para este ano.</Text>
+          <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(14) }]}>Nenhum relatorio para este ano.</Text>
         ) : (
           mesesVisiveis.map((nomeMes, index) => {
             const mes = index + 1;
@@ -278,11 +279,15 @@ export default function RelatorioMensalScreen() {
             const salvo = relatoriosSalvos[mes];
 
             return (
-              <View key={mes} style={[styles.monthCard, isCurrentMonth && styles.currentMonthCard]}>
+              <View key={mes} style={[
+                styles.monthCard,
+                { backgroundColor: c.white },
+                isCurrentMonth && { borderWidth: 2, borderColor: c.primary },
+              ]}>
                 <Pressable style={styles.monthHeader} onPress={() => handleExpand(mes)}>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={styles.monthTitle}>{nomeMes} {anoSelecionado}</Text>
+                      <Text style={[styles.monthTitle, { color: c.textPrimary, fontSize: scale(16) }]}>{nomeMes} {anoSelecionado}</Text>
                       {salvo && salvo.fechado && (
                         <Feather name="check-circle" size={14} color="#16a34a" />
                       )}
@@ -292,52 +297,54 @@ export default function RelatorioMensalScreen() {
                       return (isCurrentMonth || (qtd != null && !isExpanded)) ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
                           {qtd != null && !isExpanded && (
-                            <Text style={styles.monthSub}>{qtd} idosos</Text>
+                            <Text style={[styles.monthSub, { color: c.textSecondary, fontSize: scale(12) }]}>{qtd} idosos</Text>
                           )}
-                          {isCurrentMonth && <Text style={styles.currentBadge}>Mes atual</Text>}
+                          {isCurrentMonth && (
+                            <Text style={[styles.currentBadge, { color: c.primary, backgroundColor: c.accent, fontSize: scale(10) }]}>Mes atual</Text>
+                          )}
                         </View>
                       ) : null;
                     })()}
                   </View>
-                  <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={colors.primary} />
+                  <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={c.primary} />
                 </Pressable>
 
                 {isExpanded && (
-                  <View style={styles.detailSection}>
+                  <View style={[styles.detailSection, { borderTopColor: c.surface }]}>
                     {loadingDetail ? (
-                      <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: 20 }} />
+                      <ActivityIndicator size="small" color={c.primary} style={{ paddingVertical: 20 }} />
                     ) : (
                       <>
                         {/* Sempre mostra estatisticas em tempo real */}
                         {isMesPassado && salvo && salvo.fechado && (
                           <View style={styles.savedBadge}>
-                            <Feather name="lock" size={12} color={colors.textSecondary} />
-                            <Text style={styles.savedBadgeText}>Relatorio fechado</Text>
+                            <Feather name="lock" size={12} color={c.textSecondary} />
+                            <Text style={[styles.savedBadgeText, { color: c.textSecondary, fontSize: scale(11) }]}>Relatorio fechado</Text>
                           </View>
                         )}
                         {renderStats(stats)}
 
-                        <Text style={[styles.label, { marginTop: 12 }]}>Observacoes</Text>
+                        <Text style={[styles.label, { marginTop: 12, color: c.textPrimary, fontSize: scale(14) }]}>Observacoes</Text>
                         <TextInput
                           value={observacoes}
                           onChangeText={setObservacoes}
                           multiline
-                          style={[styles.input, styles.multiline]}
+                          style={[styles.input, styles.multiline, { backgroundColor: c.surfaceLight, borderColor: c.border, color: c.textPrimary, fontSize: scale(14) }]}
                           placeholder="Observacoes do mes..."
-                          placeholderTextColor={colors.textSecondary}
+                          placeholderTextColor={c.textSecondary}
                           editable={isCurrentMonth}
                         />
 
                         {isCurrentMonth && (
                           <Pressable
-                            style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]}
+                            style={({ pressed }) => [styles.saveBtn, { backgroundColor: c.primary }, pressed && { opacity: 0.8 }]}
                             onPress={() => handleSave(mes)}
                             disabled={saving}
                           >
                             {saving ? (
                               <ActivityIndicator color="#fff" />
                             ) : (
-                              <Text style={styles.saveBtnText}>Confirmar Relatorio</Text>
+                              <Text style={[styles.saveBtnText, { fontSize: scale(16) }]}>Confirmar Relatorio</Text>
                             )}
                           </Pressable>
                         )}
@@ -353,8 +360,8 @@ export default function RelatorioMensalScreen() {
                             }
                           }}
                         >
-                          <Feather name="file-text" size={14} color={colors.white} />
-                          <Text style={styles.pdfBtnText}>Exportar PDF</Text>
+                          <Feather name="file-text" size={14} color={c.white} />
+                          <Text style={[styles.pdfBtnText, { fontSize: scale(14) }]}>Exportar PDF</Text>
                         </Pressable>
                       </>
                     )}
@@ -369,34 +376,34 @@ export default function RelatorioMensalScreen() {
       {/* Modal de simulacao */}
       <Modal visible={showSimModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Simulacao de Tempo</Text>
-            <Text style={styles.modalDesc}>
+          <View style={[styles.modalBox, { backgroundColor: c.white }]}>
+            <Text style={[styles.modalTitle, { color: c.primary, fontSize: scale(18) }]}>Simulacao de Tempo</Text>
+            <Text style={[styles.modalDesc, { color: c.textSecondary, fontSize: scale(13) }]}>
               Avance ou volte meses para simular a passagem do tempo.{'\n'}
               Meses anteriores serao fechados automaticamente com os dados do banco.
             </Text>
 
             <View style={styles.modalNav}>
-              <Pressable onPress={voltarMes} style={styles.modalArrow}>
-                <Feather name="chevron-left" size={24} color={colors.primary} />
+              <Pressable onPress={voltarMes} style={[styles.modalArrow, { backgroundColor: c.surfaceLight }]}>
+                <Feather name="chevron-left" size={24} color={c.primary} />
               </Pressable>
-              <Text style={styles.modalCurrent}>
+              <Text style={[styles.modalCurrent, { color: c.textPrimary, fontSize: scale(18) }]}>
                 {MESES[mesSimulado - 1]} {anoSimulado}
               </Text>
-              <Pressable onPress={avancarMes} style={styles.modalArrow}>
-                <Feather name="chevron-right" size={24} color={colors.primary} />
+              <Pressable onPress={avancarMes} style={[styles.modalArrow, { backgroundColor: c.surfaceLight }]}>
+                <Feather name="chevron-right" size={24} color={c.primary} />
               </Pressable>
             </View>
 
             {isSimulando && (
               <Pressable style={styles.resetBtn} onPress={resetarSimulacao}>
-                <Feather name="rotate-ccw" size={16} color={colors.white} />
-                <Text style={styles.resetBtnText}>Voltar para hoje</Text>
+                <Feather name="rotate-ccw" size={16} color={c.white} />
+                <Text style={[styles.resetBtnText, { fontSize: scale(14) }]}>Voltar para hoje</Text>
               </Pressable>
             )}
 
             <Pressable style={styles.closeBtn} onPress={() => setShowSimModal(false)}>
-              <Text style={styles.closeBtnText}>Fechar</Text>
+              <Text style={[styles.closeBtnText, { color: c.textSecondary, fontSize: scale(14) }]}>Fechar</Text>
             </Pressable>
           </View>
         </View>
@@ -406,17 +413,16 @@ export default function RelatorioMensalScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
+  container: { flex: 1 },
   content: { padding: 12, paddingBottom: 30 },
   emptyText: {
-    textAlign: 'center', color: colors.textSecondary, fontSize: 14,
+    textAlign: 'center', fontSize: 14,
     fontStyle: 'italic', paddingVertical: 40,
   },
 
   // Barra de simulacao
   simBar: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.primaryDark || '#2c1a0f',
     paddingVertical: 8, paddingHorizontal: 8,
   },
   simArrow: { padding: 6 },
@@ -424,7 +430,7 @@ const styles = StyleSheet.create({
     flex: 1, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 6,
   },
-  simText: { color: colors.white, fontSize: 15, fontWeight: '600' },
+  simText: { fontSize: 15, fontWeight: '600' },
   simBadge: { backgroundColor: '#ef4444', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },
   simBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
   gearBtn: { padding: 6 },
@@ -432,47 +438,45 @@ const styles = StyleSheet.create({
   // Filtro de ano
   yearBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 8, backgroundColor: colors.white, gap: 16,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingVertical: 8, gap: 16,
+    borderBottomWidth: 1,
   },
   yearArrow: { padding: 4 },
-  yearText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  yearText: { fontWeight: '700' },
 
   // Cards de mes
   monthCard: {
-    backgroundColor: colors.white, borderRadius: 12, marginBottom: 10,
+    borderRadius: 12, marginBottom: 10,
     elevation: 1, boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)', overflow: 'hidden',
   },
-  currentMonthCard: { borderWidth: 2, borderColor: colors.primary },
   monthHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: 14,
   },
-  monthTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
-  monthSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  monthTitle: { fontWeight: '700' },
+  monthSub: { marginTop: 2 },
   currentBadge: {
-    fontSize: 10, fontWeight: '700', color: colors.primary,
-    backgroundColor: colors.accent, alignSelf: 'flex-start',
+    fontWeight: '700',
+    alignSelf: 'flex-start',
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 3,
   },
   savedBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingVertical: 6, marginTop: 4,
   },
-  savedBadgeText: { fontSize: 11, color: colors.textSecondary, fontStyle: 'italic' },
+  savedBadgeText: { fontStyle: 'italic' },
 
   // Detalhes expandido
   detailSection: {
     paddingHorizontal: 14, paddingBottom: 14, borderTopWidth: 1,
-    borderTopColor: colors.surface,
   },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, gap: 8 },
   statItem: {
-    width: '47%', backgroundColor: colors.surfaceLight, borderRadius: 10,
+    width: '47%', borderRadius: 10,
     padding: 12, alignItems: 'center',
   },
-  statValue: { fontSize: 22, fontWeight: '800', color: colors.primary },
-  statLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+  statValue: { fontWeight: '800' },
+  statLabel: { marginTop: 2 },
 
   // Barra de genero
   genderBar: {
@@ -483,23 +487,22 @@ const styles = StyleSheet.create({
   genderText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
   // Form
-  label: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },
+  label: { fontWeight: '700', marginBottom: 6 },
   input: {
-    backgroundColor: colors.surfaceLight, borderRadius: 10, paddingHorizontal: 12,
-    paddingVertical: 10, borderWidth: 1, borderColor: colors.border, fontSize: 14,
-    color: colors.textPrimary,
+    borderRadius: 10, paddingHorizontal: 12,
+    paddingVertical: 10, borderWidth: 1,
   },
   multiline: { minHeight: 80, textAlignVertical: 'top' },
   saveBtn: {
-    marginTop: 12, backgroundColor: colors.primary, paddingVertical: 14,
+    marginTop: 12, paddingVertical: 14,
     borderRadius: 10, alignItems: 'center',
   },
-  saveBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  saveBtnText: { color: '#fff', fontWeight: '800' },
   pdfBtn: {
     marginTop: 10, backgroundColor: '#7c3aed', paddingVertical: 12, borderRadius: 10,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
-  pdfBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  pdfBtnText: { color: '#fff', fontWeight: '700' },
 
   // Modal
   modalOverlay: {
@@ -507,23 +510,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', padding: 30,
   },
   modalBox: {
-    backgroundColor: colors.white, borderRadius: 16, padding: 24,
+    borderRadius: 16, padding: 24,
     width: '100%', alignItems: 'center',
   },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.primary, marginBottom: 8 },
+  modalTitle: { fontWeight: '800', marginBottom: 8 },
   modalDesc: {
-    fontSize: 13, color: colors.textSecondary, textAlign: 'center',
+    textAlign: 'center',
     marginBottom: 20, lineHeight: 18,
   },
   modalNav: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 16 },
-  modalArrow: { padding: 10, borderRadius: 10, backgroundColor: colors.surfaceLight },
-  modalCurrent: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+  modalArrow: { padding: 10, borderRadius: 10 },
+  modalCurrent: { fontWeight: '700' },
   resetBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: '#ef4444', paddingVertical: 10, paddingHorizontal: 20,
     borderRadius: 10, marginBottom: 10,
   },
-  resetBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  resetBtnText: { color: '#fff', fontWeight: '700' },
   closeBtn: { paddingVertical: 10, paddingHorizontal: 30 },
-  closeBtnText: { color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
+  closeBtnText: { fontWeight: '600' },
 });

@@ -9,9 +9,10 @@ import { getAtividades, saveAtividade } from '../services/atividadeService';
 import { getIdosos } from '../services/idosoService';
 import SearchBar from '../components/SearchBar';
 import ScreenHeader from '../components/ScreenHeader';
-import colors from '../theme/colors';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 export default function RegistroDiarioScreen() {
+  const { activeColors: c, scale } = useAccessibility();
   const [atividades, setAtividades] = useState([]);
   const [idosos, setIdosos] = useState([]);
   const [selectedAtividade, setSelectedAtividade] = useState('');
@@ -151,92 +152,108 @@ export default function RegistroDiarioScreen() {
     : idosos;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: c.surface }]}>
       <ScreenHeader title="Registro Diario" />
       <ScrollView
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}
       >
         {/* Activity Picker */}
-        <Text style={styles.label}>Atividade</Text>
-        <Pressable style={styles.picker} onPress={() => setShowAtivPicker(true)}>
-          <Text style={styles.pickerText}>{selectedAtividade || 'Selecione...'}</Text>
-          <Feather name="chevron-down" size={18} color={colors.textSecondary} />
+        <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(14) }]}>Atividade</Text>
+        <Pressable style={[styles.picker, { backgroundColor: c.white, borderColor: c.border }]} onPress={() => setShowAtivPicker(true)}>
+          <Text style={[styles.pickerText, { color: c.textPrimary, fontSize: scale(14) }]}>{selectedAtividade || 'Selecione...'}</Text>
+          <Feather name="chevron-down" size={18} color={c.textSecondary} />
         </Pressable>
 
         <View style={styles.actionRow}>
-          <Pressable style={styles.actionBtn} onPress={() => setShowNewAtiv(true)}>
-            <Feather name="plus" size={16} color={colors.primary} />
-            <Text style={styles.actionBtnText}>Nova</Text>
+          <Pressable style={[styles.actionBtn, { backgroundColor: c.white, borderColor: c.border }]} onPress={() => setShowNewAtiv(true)}>
+            <Feather name="plus" size={16} color={c.primary} />
+            <Text style={[styles.actionBtnText, { color: c.primary, fontSize: scale(13) }]}>Nova</Text>
           </Pressable>
-          <Pressable style={styles.actionBtn} onPress={handleConsulta}>
-            <Feather name="search" size={16} color={colors.primary} />
-            <Text style={styles.actionBtnText}>Consultar</Text>
+          <Pressable style={[styles.actionBtn, { backgroundColor: c.white, borderColor: c.border }]} onPress={handleConsulta}>
+            <Feather name="search" size={16} color={c.primary} />
+            <Text style={[styles.actionBtnText, { color: c.primary, fontSize: scale(13) }]}>Consultar</Text>
           </Pressable>
         </View>
 
         {/* Date */}
-        <Text style={styles.label}>Data</Text>
+        <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(14) }]}>Data</Text>
         <TextInput
           value={selectedDate}
           onChangeText={setSelectedDate}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary, fontSize: scale(14) }]}
           placeholder="AAAA-MM-DD"
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={c.textSecondary}
         />
 
         {/* Search & Attendance */}
-        <Text style={[styles.label, { marginTop: 16 }]}>Registro de Presenca</Text>
+        <Text style={[styles.label, { marginTop: 16, color: c.textPrimary, fontSize: scale(14) }]}>Registro de Presenca</Text>
         <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar idoso..." />
 
         {filteredIdosos.map((idoso) => (
           <Pressable
             key={idoso.id}
-            style={[styles.idosoRow, presentes.has(idoso.nome) && styles.idosoRowSelected]}
+            style={[
+              styles.idosoRow,
+              { borderBottomColor: c.surface },
+              presentes.has(idoso.nome) && { backgroundColor: '#EDE9E5' },
+            ]}
             onPress={() => togglePresente(idoso.nome)}
           >
             {idoso.fotoUrl ? (
               <Image source={{ uri: idoso.fotoUrl }} style={styles.avatar} />
             ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Feather name="user" size={16} color={colors.textSecondary} />
+              <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: c.surface }]}>
+                <Feather name="user" size={16} color={c.textSecondary} />
               </View>
             )}
-            <Text style={styles.idosoName}>{idoso.nome}</Text>
-            <View style={[styles.checkbox, presentes.has(idoso.nome) && styles.checkboxChecked]}>
-              {presentes.has(idoso.nome) && <Feather name="check" size={14} color={colors.white} />}
+            <Text style={[styles.idosoName, { color: c.textPrimary, fontSize: scale(14) }]}>{idoso.nome}</Text>
+            <View style={[
+              styles.checkbox,
+              { borderColor: c.border },
+              presentes.has(idoso.nome) && { backgroundColor: c.primary, borderColor: c.primary },
+            ]}>
+              {presentes.has(idoso.nome) && <Feather name="check" size={14} color={c.white} />}
             </View>
           </Pressable>
         ))}
 
         {/* Save */}
         <Pressable
-          style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.saveBtn, { backgroundColor: c.primary }, pressed && { opacity: 0.8 }]}
           onPress={handleSave}
         >
-          <Text style={styles.saveBtnText}>Salvar Presencas ({presentes.size})</Text>
+          <Text style={[styles.saveBtnText, { fontSize: scale(16) }]}>Salvar Presencas ({presentes.size})</Text>
         </Pressable>
       </ScrollView>
 
       {/* Activity Picker Modal */}
       <Modal visible={showAtivPicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Selecionar Atividade</Text>
+          <View style={[styles.modalContent, { backgroundColor: c.white }]}>
+            <Text style={[styles.modalTitle, { color: c.textPrimary, fontSize: scale(18) }]}>Selecionar Atividade</Text>
             {atividadeNomes.map((nome) => (
               <Pressable
                 key={nome}
-                style={[styles.modalOption, selectedAtividade === nome && styles.modalOptionActive]}
+                style={[
+                  styles.modalOption,
+                  { backgroundColor: c.surfaceLight },
+                  selectedAtividade === nome && { backgroundColor: c.primary },
+                ]}
                 onPress={() => { setSelectedAtividade(nome); setShowAtivPicker(false); }}
               >
-                <Text style={[styles.modalOptionText, selectedAtividade === nome && { color: colors.white }]}>{nome}</Text>
+                <Text style={[
+                  styles.modalOptionText,
+                  { color: c.textPrimary, fontSize: scale(14) },
+                  selectedAtividade === nome && { color: c.white },
+                ]}>{nome}</Text>
               </Pressable>
             ))}
             {atividadeNomes.length === 0 && (
-              <Text style={styles.emptyText}>Nenhuma atividade cadastrada</Text>
+              <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(14) }]}>Nenhuma atividade cadastrada</Text>
             )}
             <Pressable onPress={() => setShowAtivPicker(false)}>
-              <Text style={styles.cancelText}>Fechar</Text>
+              <Text style={[styles.cancelText, { color: c.textSecondary, fontSize: scale(14) }]}>Fechar</Text>
             </Pressable>
           </View>
         </View>
@@ -245,20 +262,20 @@ export default function RegistroDiarioScreen() {
       {/* New Activity Modal */}
       <Modal visible={showNewAtiv} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Nova Atividade</Text>
+          <View style={[styles.modalContent, { backgroundColor: c.white }]}>
+            <Text style={[styles.modalTitle, { color: c.textPrimary, fontSize: scale(18) }]}>Nova Atividade</Text>
             <TextInput
               value={novaAtividade}
               onChangeText={setNovaAtividade}
               placeholder="Nome da atividade"
-              style={styles.input}
-              placeholderTextColor={colors.textSecondary}
+              style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary, fontSize: scale(14) }]}
+              placeholderTextColor={c.textSecondary}
             />
-            <Pressable style={[styles.saveBtn, { marginTop: 12 }]} onPress={handleNovaAtividade}>
-              <Text style={styles.saveBtnText}>Criar</Text>
+            <Pressable style={[styles.saveBtn, { marginTop: 12, backgroundColor: c.primary }]} onPress={handleNovaAtividade}>
+              <Text style={[styles.saveBtnText, { fontSize: scale(16) }]}>Criar</Text>
             </Pressable>
             <Pressable onPress={() => setShowNewAtiv(false)}>
-              <Text style={styles.cancelText}>Cancelar</Text>
+              <Text style={[styles.cancelText, { color: c.textSecondary, fontSize: scale(14) }]}>Cancelar</Text>
             </Pressable>
           </View>
         </View>
@@ -267,21 +284,21 @@ export default function RegistroDiarioScreen() {
       {/* Consulta Modal */}
       <Modal visible={showConsulta} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Presencas - {selectedAtividade}</Text>
+          <View style={[styles.modalContent, { backgroundColor: c.white }]}>
+            <Text style={[styles.modalTitle, { color: c.textPrimary, fontSize: scale(18) }]}>Presencas - {selectedAtividade}</Text>
             {consultaData.length > 0 ? (
               consultaData.map((p, i) => (
                 <View key={i} style={styles.consultaRow}>
-                  <Feather name="check-circle" size={16} color={colors.success} />
-                  <Text style={styles.consultaName}>{p.nome}</Text>
-                  <Text style={styles.consultaTime}>{p.hora}</Text>
+                  <Feather name="check-circle" size={16} color={c.success} />
+                  <Text style={[styles.consultaName, { color: c.textPrimary, fontSize: scale(14) }]}>{p.nome}</Text>
+                  <Text style={[styles.consultaTime, { color: c.textSecondary, fontSize: scale(12) }]}>{p.hora}</Text>
                 </View>
               ))
             ) : (
-              <Text style={styles.emptyText}>Nenhuma presenca registrada</Text>
+              <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(14) }]}>Nenhuma presenca registrada</Text>
             )}
             <Pressable onPress={() => setShowConsulta(false)}>
-              <Text style={styles.cancelText}>Fechar</Text>
+              <Text style={[styles.cancelText, { color: c.textSecondary, fontSize: scale(14) }]}>Fechar</Text>
             </Pressable>
           </View>
         </View>
@@ -291,61 +308,57 @@ export default function RegistroDiarioScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
+  container: { flex: 1 },
   content: { padding: 16, paddingBottom: 30 },
-  label: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },
+  label: { fontWeight: '700', marginBottom: 6 },
   picker: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: colors.white, borderRadius: 10, paddingHorizontal: 12,
-    paddingVertical: 12, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 10, paddingHorizontal: 12,
+    paddingVertical: 12, borderWidth: 1,
   },
-  pickerText: { fontSize: 14, color: colors.textPrimary },
+  pickerText: {},
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 8, marginBottom: 12 },
   actionBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    borderWidth: 1,
   },
-  actionBtnText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  actionBtnText: { fontWeight: '600' },
   input: {
-    backgroundColor: colors.white, borderRadius: 10, paddingHorizontal: 12,
-    paddingVertical: 10, borderWidth: 1, borderColor: colors.border, fontSize: 14,
-    color: colors.textPrimary,
+    borderRadius: 10, paddingHorizontal: 12,
+    paddingVertical: 10, borderWidth: 1,
   },
   idosoRow: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 10,
-    paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: colors.surface,
+    paddingHorizontal: 10, borderBottomWidth: 1,
     borderRadius: 8, marginBottom: 2,
   },
-  idosoRowSelected: { backgroundColor: '#EDE9E5' },
   avatar: { width: 36, height: 36, borderRadius: 18, marginRight: 10 },
-  avatarPlaceholder: { backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
-  idosoName: { flex: 1, fontSize: 14, color: colors.textPrimary },
+  avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  idosoName: { flex: 1 },
   checkbox: {
     width: 24, height: 24, borderRadius: 6, borderWidth: 2,
-    borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
   saveBtn: {
-    marginTop: 20, backgroundColor: colors.primary, paddingVertical: 14,
+    marginTop: 20, paddingVertical: 14,
     borderRadius: 10, alignItems: 'center',
   },
-  saveBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  saveBtnText: { color: '#fff', fontWeight: '800' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: {
-    backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
     padding: 20, paddingBottom: 30, maxHeight: '70%',
   },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, textAlign: 'center', marginBottom: 16 },
+  modalTitle: { fontWeight: '800', textAlign: 'center', marginBottom: 16 },
   modalOption: {
     paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10,
-    marginBottom: 4, backgroundColor: colors.surfaceLight,
+    marginBottom: 4,
   },
-  modalOptionActive: { backgroundColor: colors.primary },
-  modalOptionText: { fontSize: 14, color: colors.textPrimary },
+  modalOptionText: {},
   consultaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
-  consultaName: { flex: 1, fontSize: 14, color: colors.textPrimary },
-  consultaTime: { fontSize: 12, color: colors.textSecondary },
-  emptyText: { textAlign: 'center', color: colors.textSecondary, paddingVertical: 16 },
-  cancelText: { textAlign: 'center', marginTop: 12, color: colors.textSecondary, fontSize: 14 },
+  consultaName: { flex: 1 },
+  consultaTime: {},
+  emptyText: { textAlign: 'center', paddingVertical: 16 },
+  cancelText: { textAlign: 'center', marginTop: 12 },
 });

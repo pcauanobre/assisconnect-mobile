@@ -8,10 +8,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../contexts/AuthContext';
 import { updatePerfil } from '../services/authService';
 import { getBackup } from '../services/backupService';
-import colors from '../theme/colors';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 export default function ProfileScreen({ navigation }) {
   const { user, updateProfile } = useAuth();
+  const { activeColors: c, scale } = useAccessibility();
   const [nome, setNome] = useState(user?.nome || '');
   const [email, setEmail] = useState(user?.email || '');
   const [telefone, setTelefone] = useState(user?.telefone || '');
@@ -57,57 +58,75 @@ export default function ProfileScreen({ navigation }) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: c.surface }]} contentContainerStyle={styles.content}>
       <Pressable onPress={pickImage} style={styles.photoContainer}>
         {fotoBase64 ? (
           <Image source={{ uri: fotoBase64 }} style={styles.photo} />
         ) : (
-          <View style={[styles.photo, styles.photoPlaceholder]}>
-            <Feather name="camera" size={32} color={colors.textSecondary} />
+          <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: c.accent }]}>
+            <Feather name="camera" size={32} color={c.textSecondary} />
           </View>
         )}
-        <Text style={styles.photoLabel}>Alterar foto</Text>
+        <Text style={[styles.photoLabel, { color: c.textSecondary, fontSize: scale(13) }]}>Alterar foto</Text>
       </Pressable>
 
-      <Text style={styles.label}>Nome</Text>
-      <TextInput value={nome} onChangeText={setNome} style={styles.input} placeholderTextColor={colors.textSecondary} />
+      <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(14) }]}>Nome</Text>
+      <TextInput
+        value={nome}
+        onChangeText={setNome}
+        style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary, fontSize: scale(14) }]}
+        placeholderTextColor={c.textSecondary}
+      />
 
-      <Text style={[styles.label, { marginTop: 12 }]}>Email</Text>
-      <TextInput value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" style={styles.input} placeholderTextColor={colors.textSecondary} />
+      <Text style={[styles.label, { marginTop: 12, color: c.textPrimary, fontSize: scale(14) }]}>Email</Text>
+      <TextInput
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary, fontSize: scale(14) }]}
+        placeholderTextColor={c.textSecondary}
+      />
 
-      <Text style={[styles.label, { marginTop: 12 }]}>Telefone</Text>
-      <TextInput value={telefone} onChangeText={setTelefone} keyboardType="phone-pad" style={styles.input} placeholderTextColor={colors.textSecondary} />
+      <Text style={[styles.label, { marginTop: 12, color: c.textPrimary, fontSize: scale(14) }]}>Telefone</Text>
+      <TextInput
+        value={telefone}
+        onChangeText={setTelefone}
+        keyboardType="phone-pad"
+        style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary, fontSize: scale(14) }]}
+        placeholderTextColor={c.textSecondary}
+      />
 
       <Pressable
-        style={({ pressed }) => [styles.btn, pressed && { opacity: 0.8 }]}
+        style={({ pressed }) => [styles.btn, { backgroundColor: c.primaryDark }, pressed && { opacity: 0.8 }]}
         onPress={handleSave}
         disabled={loading}
       >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.btnText}>Salvar</Text>
+          <Text style={[styles.btnText, { fontSize: scale(16) }]}>Salvar</Text>
         )}
       </Pressable>
 
       <View style={styles.menuSection}>
-        <Text style={styles.menuTitle}>Configuracoes</Text>
+        <Text style={[styles.menuTitle, { color: c.textSecondary, fontSize: scale(13) }]}>Configuracoes</Text>
 
-        <Pressable style={styles.menuRow} onPress={() => navigation.navigate('Notificacoes')}>
-          <Feather name="bell" size={18} color={colors.primary} />
-          <Text style={styles.menuLabel}>Notificacoes</Text>
-          <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+        <Pressable style={[styles.menuRow, { backgroundColor: c.white }]} onPress={() => navigation.navigate('Notificacoes')}>
+          <Feather name="bell" size={18} color={c.primary} />
+          <Text style={[styles.menuLabel, { color: c.textPrimary, fontSize: scale(14) }]}>Notificacoes</Text>
+          <Feather name="chevron-right" size={18} color={c.textSecondary} />
         </Pressable>
 
-        <Pressable style={styles.menuRow} onPress={() => navigation.navigate('Acessibilidade')}>
-          <Feather name="eye" size={18} color={colors.primary} />
-          <Text style={styles.menuLabel}>Acessibilidade</Text>
-          <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+        <Pressable style={[styles.menuRow, { backgroundColor: c.white }]} onPress={() => navigation.navigate('Acessibilidade')}>
+          <Feather name="eye" size={18} color={c.primary} />
+          <Text style={[styles.menuLabel, { color: c.textPrimary, fontSize: scale(14) }]}>Acessibilidade</Text>
+          <Feather name="chevron-right" size={18} color={c.textSecondary} />
         </Pressable>
 
         {user?.administrador && (
           <Pressable
-            style={styles.menuRow}
+            style={[styles.menuRow, { backgroundColor: c.white }]}
             onPress={async () => {
               try {
                 const res = await getBackup();
@@ -118,16 +137,16 @@ export default function ProfileScreen({ navigation }) {
               }
             }}
           >
-            <Feather name="download" size={18} color={colors.primary} />
-            <Text style={styles.menuLabel}>Exportar Backup (admin)</Text>
-            <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+            <Feather name="download" size={18} color={c.primary} />
+            <Text style={[styles.menuLabel, { color: c.textPrimary, fontSize: scale(14) }]}>Exportar Backup (admin)</Text>
+            <Feather name="chevron-right" size={18} color={c.textSecondary} />
           </Pressable>
         )}
 
-        <Pressable style={styles.menuRow} onPress={() => navigation.navigate('Sobre')}>
-          <Feather name="info" size={18} color={colors.primary} />
-          <Text style={styles.menuLabel}>Sobre o App</Text>
-          <Feather name="chevron-right" size={18} color={colors.textSecondary} />
+        <Pressable style={[styles.menuRow, { backgroundColor: c.white }]} onPress={() => navigation.navigate('Sobre')}>
+          <Feather name="info" size={18} color={c.primary} />
+          <Text style={[styles.menuLabel, { color: c.textPrimary, fontSize: scale(14) }]}>Sobre o App</Text>
+          <Feather name="chevron-right" size={18} color={c.textSecondary} />
         </Pressable>
       </View>
     </ScrollView>
@@ -135,30 +154,28 @@ export default function ProfileScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
+  container: { flex: 1 },
   content: { padding: 20, alignItems: 'center' },
   photoContainer: { alignItems: 'center', marginBottom: 20 },
   photo: { width: 100, height: 100, borderRadius: 50 },
-  photoPlaceholder: {
-    backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center',
-  },
-  photoLabel: { marginTop: 8, fontSize: 13, color: colors.textSecondary },
-  label: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 6, alignSelf: 'flex-start' },
+  photoPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  photoLabel: { marginTop: 8 },
+  label: { fontWeight: '700', marginBottom: 6, alignSelf: 'flex-start' },
   input: {
-    width: '100%', backgroundColor: colors.white, borderRadius: 10, paddingHorizontal: 12,
-    paddingVertical: 10, borderWidth: 1, borderColor: colors.border, fontSize: 14, color: colors.textPrimary,
+    width: '100%', borderRadius: 10, paddingHorizontal: 12,
+    paddingVertical: 10, borderWidth: 1,
   },
   btn: {
-    marginTop: 24, width: '100%', backgroundColor: colors.primaryDark,
+    marginTop: 24, width: '100%',
     paddingVertical: 16, borderRadius: 10, alignItems: 'center',
   },
-  btnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  btnText: { color: '#fff', fontWeight: '800' },
   menuSection: { width: '100%', marginTop: 24 },
-  menuTitle: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginBottom: 6, textTransform: 'uppercase' },
+  menuTitle: { fontWeight: '700', marginBottom: 6, textTransform: 'uppercase' },
   menuRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: colors.white, paddingVertical: 14, paddingHorizontal: 14,
+    paddingVertical: 14, paddingHorizontal: 14,
     borderRadius: 10, marginBottom: 8, elevation: 1,
   },
-  menuLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  menuLabel: { flex: 1, fontWeight: '600' },
 });
