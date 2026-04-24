@@ -7,10 +7,11 @@ import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../contexts/AuthContext';
 import { updatePerfil } from '../services/authService';
-import colors from '../theme/colors';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 export default function ProfileScreen({ navigation }) {
   const { user, updateProfile } = useAuth();
+  const { activeColors: c } = useAccessibility();
   const [nome, setNome] = useState(user?.nome || '');
   const [email, setEmail] = useState(user?.email || '');
   const [telefone, setTelefone] = useState(user?.telefone || '');
@@ -56,29 +57,40 @@ export default function ProfileScreen({ navigation }) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={{ flex: 1, backgroundColor: c.surface }} contentContainerStyle={styles.content}>
       <Pressable onPress={pickImage} style={styles.photoContainer}>
         {fotoBase64 ? (
           <Image source={{ uri: fotoBase64 }} style={styles.photo} />
         ) : (
-          <View style={[styles.photo, styles.photoPlaceholder]}>
-            <Feather name="camera" size={32} color={colors.textSecondary} />
+          <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: c.accent }]}>
+            <Feather name="camera" size={32} color={c.textSecondary} />
           </View>
         )}
-        <Text style={styles.photoLabel}>Alterar foto</Text>
+        <Text style={[styles.photoLabel, { color: c.textSecondary }]}>Alterar foto</Text>
       </Pressable>
 
-      <Text style={styles.label}>Nome</Text>
-      <TextInput value={nome} onChangeText={setNome} style={styles.input} placeholderTextColor={colors.textSecondary} />
+      <Text style={[styles.label, { color: c.textPrimary }]}>Nome</Text>
+      <TextInput
+        value={nome} onChangeText={setNome} style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary }]}
+        placeholderTextColor={c.textSecondary}
+      />
 
-      <Text style={[styles.label, { marginTop: 12 }]}>Email</Text>
-      <TextInput value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" style={styles.input} placeholderTextColor={colors.textSecondary} />
+      <Text style={[styles.label, { marginTop: 12, color: c.textPrimary }]}>Email</Text>
+      <TextInput
+        value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none"
+        style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary }]}
+        placeholderTextColor={c.textSecondary}
+      />
 
-      <Text style={[styles.label, { marginTop: 12 }]}>Telefone</Text>
-      <TextInput value={telefone} onChangeText={setTelefone} keyboardType="phone-pad" style={styles.input} placeholderTextColor={colors.textSecondary} />
+      <Text style={[styles.label, { marginTop: 12, color: c.textPrimary }]}>Telefone</Text>
+      <TextInput
+        value={telefone} onChangeText={setTelefone} keyboardType="phone-pad"
+        style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary }]}
+        placeholderTextColor={c.textSecondary}
+      />
 
       <Pressable
-        style={({ pressed }) => [styles.btn, pressed && { opacity: 0.8 }]}
+        style={({ pressed }) => [styles.btn, { backgroundColor: c.primaryDark }, pressed && { opacity: 0.8 }]}
         onPress={handleSave}
         disabled={loading}
       >
@@ -93,21 +105,18 @@ export default function ProfileScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
   content: { padding: 20, alignItems: 'center' },
   photoContainer: { alignItems: 'center', marginBottom: 20 },
   photo: { width: 100, height: 100, borderRadius: 50 },
-  photoPlaceholder: {
-    backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center',
-  },
-  photoLabel: { marginTop: 8, fontSize: 13, color: colors.textSecondary },
-  label: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 6, alignSelf: 'flex-start' },
+  photoPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  photoLabel: { marginTop: 8, fontSize: 13 },
+  label: { fontSize: 14, fontWeight: '700', marginBottom: 6, alignSelf: 'flex-start' },
   input: {
-    width: '100%', backgroundColor: colors.white, borderRadius: 10, paddingHorizontal: 12,
-    paddingVertical: 10, borderWidth: 1, borderColor: colors.border, fontSize: 14, color: colors.textPrimary,
+    width: '100%', borderRadius: 10, paddingHorizontal: 12,
+    paddingVertical: 10, borderWidth: 1, fontSize: 14,
   },
   btn: {
-    marginTop: 24, width: '100%', backgroundColor: colors.primaryDark,
+    marginTop: 24, width: '100%',
     paddingVertical: 16, borderRadius: 10, alignItems: 'center',
   },
   btnText: { color: '#fff', fontWeight: '800', fontSize: 16 },

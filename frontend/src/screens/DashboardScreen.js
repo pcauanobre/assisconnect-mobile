@@ -11,11 +11,12 @@ import { getAtividadesHoje } from '../services/atividadeService';
 import { getUsuariosCount } from '../services/usuarioService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StatCard from '../components/StatCard';
-import colors from '../theme/colors';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 export default function DashboardScreen({ navigation }) {
   const { user, logout } = useAuth();
   const insets = useSafeAreaInsets();
+  const { activeColors: c } = useAccessibility();
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ idosos: 0, aniversarios: 0, atividades: 0, colaboradores: 0 });
   const [menuHoje, setMenuHoje] = useState(null);
@@ -76,20 +77,20 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
+      style={{ flex: 1, backgroundColor: c.surface }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}
     >
       {/* Header */}
-      <View style={[styles.header, { height: 56 + insets.top, paddingTop: insets.top }]}>
+      <View style={[styles.header, { height: 56 + insets.top, paddingTop: insets.top, backgroundColor: c.primary }]}>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Inicio</Text>
         </View>
         <View style={styles.headerActions}>
           <Pressable onPress={() => navigation.navigate('Profile')} style={styles.headerBtn}>
-            <Feather name="user" size={20} color={colors.white} />
+            <Feather name="user" size={20} color="#fff" />
           </Pressable>
           <Pressable onPress={logout} style={styles.headerBtn}>
-            <Feather name="log-out" size={20} color={colors.white} />
+            <Feather name="log-out" size={20} color="#fff" />
           </Pressable>
         </View>
       </View>
@@ -105,80 +106,80 @@ export default function DashboardScreen({ navigation }) {
       </View>
 
       {/* Menu do Dia */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Menu do Dia</Text>
+      <View style={[styles.section, { backgroundColor: c.white, borderColor: c.border }]}>
+        <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>Menu do Dia</Text>
         {menuHoje ? (
           <View style={styles.menuCard}>
             {menuHoje.cafe && (
               <View style={styles.menuRow}>
-                <Feather name="coffee" size={16} color={colors.primary} />
-                <Text style={styles.menuLabel}>Cafe:</Text>
-                <Text style={styles.menuText}>{menuHoje.cafe.prato} ({menuHoje.cafe.calorias} kcal)</Text>
+                <Feather name="coffee" size={16} color={c.primary} />
+                <Text style={[styles.menuLabel, { color: c.textPrimary }]}>Cafe:</Text>
+                <Text style={[styles.menuText, { color: c.textSecondary }]}>{menuHoje.cafe.prato} ({menuHoje.cafe.calorias} kcal)</Text>
               </View>
             )}
             {menuHoje.almoco && (
               <View style={styles.menuRow}>
-                <Feather name="sun" size={16} color={colors.primary} />
-                <Text style={styles.menuLabel}>Almoco:</Text>
-                <Text style={styles.menuText}>{menuHoje.almoco.prato} ({menuHoje.almoco.calorias} kcal)</Text>
+                <Feather name="sun" size={16} color={c.primary} />
+                <Text style={[styles.menuLabel, { color: c.textPrimary }]}>Almoco:</Text>
+                <Text style={[styles.menuText, { color: c.textSecondary }]}>{menuHoje.almoco.prato} ({menuHoje.almoco.calorias} kcal)</Text>
               </View>
             )}
             {menuHoje.jantar && (
               <View style={styles.menuRow}>
-                <Feather name="moon" size={16} color={colors.primary} />
-                <Text style={styles.menuLabel}>Jantar:</Text>
-                <Text style={styles.menuText}>{menuHoje.jantar.prato} ({menuHoje.jantar.calorias} kcal)</Text>
+                <Feather name="moon" size={16} color={c.primary} />
+                <Text style={[styles.menuLabel, { color: c.textPrimary }]}>Jantar:</Text>
+                <Text style={[styles.menuText, { color: c.textSecondary }]}>{menuHoje.jantar.prato} ({menuHoje.jantar.calorias} kcal)</Text>
               </View>
             )}
           </View>
         ) : (
-          <Text style={styles.emptyText}>Nenhum cardapio cadastrado para hoje</Text>
+          <Text style={[styles.emptyText, { color: c.textSecondary }]}>Nenhum cardapio cadastrado para hoje</Text>
         )}
       </View>
 
       {/* Aniversariantes do Mes */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Aniversariantes do Mes</Text>
+      <View style={[styles.section, { backgroundColor: c.white, borderColor: c.border }]}>
+        <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>Aniversariantes do Mes</Text>
         {aniversariantes.length > 0 ? (
           aniversariantes.map((item, i) => (
-            <View key={i} style={styles.listItem}>
+            <View key={i} style={[styles.listItem, { borderBottomColor: c.surface }]}>
               {item.fotoUrl ? (
                 <Image source={{ uri: item.fotoUrl }} style={styles.avatar} />
               ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Feather name="user" size={16} color={colors.textSecondary} />
+                <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: c.surface }]}>
+                  <Feather name="user" size={16} color={c.textSecondary} />
                 </View>
               )}
               <View style={{ flex: 1 }}>
-                <Text style={styles.listName}>{item.nome}</Text>
-                <Text style={styles.listSub}>
+                <Text style={[styles.listName, { color: c.textPrimary }]}>{item.nome}</Text>
+                <Text style={[styles.listSub, { color: c.textSecondary }]}>
                   {item.dataNascimento ? `${calcularIdade(item.dataNascimento)} anos` : ''}
                 </Text>
               </View>
             </View>
           ))
         ) : (
-          <Text style={styles.emptyText}>Nenhum aniversariante neste mes</Text>
+          <Text style={[styles.emptyText, { color: c.textSecondary }]}>Nenhum aniversariante neste mes</Text>
         )}
       </View>
 
       {/* Atividades de Hoje */}
-      <View style={[styles.section, { marginBottom: 30 }]}>
-        <Text style={styles.sectionTitle}>Atividades de Hoje</Text>
+      <View style={[styles.section, { backgroundColor: c.white, borderColor: c.border, marginBottom: 30 }]}>
+        <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>Atividades de Hoje</Text>
         {atividadesHoje.length > 0 ? (
           atividadesHoje.map((item, i) => (
-            <View key={i} style={styles.listItem}>
-              <Feather name="activity" size={18} color={colors.primary} />
+            <View key={i} style={[styles.listItem, { borderBottomColor: c.surface }]}>
+              <Feather name="activity" size={18} color={c.primary} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.listName}>{item.nome}</Text>
-                <Text style={styles.listSub}>
+                <Text style={[styles.listName, { color: c.textPrimary }]}>{item.nome}</Text>
+                <Text style={[styles.listSub, { color: c.textSecondary }]}>
                   {item.horaRegistro} - {item.presentes?.length || 0} presentes
                 </Text>
               </View>
             </View>
           ))
         ) : (
-          <Text style={styles.emptyText}>Nenhuma atividade registrada hoje</Text>
+          <Text style={[styles.emptyText, { color: c.textSecondary }]}>Nenhuma atividade registrada hoje</Text>
         )}
       </View>
     </ScrollView>
@@ -186,15 +187,13 @@ export default function DashboardScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
   header: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.white },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
   headerActions: { flexDirection: 'row', gap: 10 },
   headerBtn: {
     width: 36, height: 36, borderRadius: 18,
@@ -203,30 +202,25 @@ const styles = StyleSheet.create({
   },
   statsRow: { flexDirection: 'row', paddingHorizontal: 8, marginTop: 8 },
   section: {
-    backgroundColor: colors.white,
     marginHorizontal: 12,
     marginTop: 16,
     borderRadius: 12,
     padding: 14,
     elevation: 1,
-    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
+    borderWidth: 1,
   },
-  sectionTitle: {
-    fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 10,
-  },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
   menuCard: { gap: 8 },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  menuLabel: { fontWeight: '700', color: colors.textPrimary, fontSize: 13 },
-  menuText: { flex: 1, fontSize: 13, color: colors.textSecondary },
+  menuLabel: { fontWeight: '700', fontSize: 13 },
+  menuText: { flex: 1, fontSize: 13 },
   listItem: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: colors.surface, gap: 10,
+    borderBottomWidth: 1, gap: 10,
   },
   avatar: { width: 36, height: 36, borderRadius: 18 },
-  avatarPlaceholder: {
-    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
-  },
-  listName: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
-  listSub: { fontSize: 12, color: colors.textSecondary },
-  emptyText: { fontSize: 13, color: colors.textSecondary, fontStyle: 'italic' },
+  avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  listName: { fontSize: 14, fontWeight: '600' },
+  listSub: { fontSize: 12 },
+  emptyText: { fontSize: 13, fontStyle: 'italic' },
 });

@@ -30,4 +30,20 @@ export const highContrastColors = {
   inactive: '#374151',
 };
 
+export const darkColors = {
+  primary: '#3D1F0C',
+  primaryDark: '#2c1a0f',
+  background: '#3D1F0C',
+  surface: '#1a1210',
+  surfaceLight: '#221810',
+  accent: '#e5d2bd',
+  white: '#2a1e16',
+  textPrimary: '#f0e6df',
+  textSecondary: '#b0a098',
+  border: '#3a2c26',
+  danger: '#ef4444',
+  success: '#22c55e',
+  inactive: '#9CA3AF',
+};
+
 export default colors;
