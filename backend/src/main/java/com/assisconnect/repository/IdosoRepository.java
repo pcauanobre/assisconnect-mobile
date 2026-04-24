@@ -20,9 +20,9 @@ public interface IdosoRepository extends JpaRepository<Idoso, Long> {
     @Query("SELECT i FROM Idoso i WHERE i.dataCriacao <= :dataLimite")
     List<Idoso> findAllCriadosAte(@Param("dataLimite") LocalDate dataLimite);
 
-    @Query("SELECT i FROM Idoso i WHERE FUNCTION('DAY', FUNCTION('STR_TO_DATE', i.dataNascimento, '%Y-%m-%d')) = :dia AND FUNCTION('MONTH', FUNCTION('STR_TO_DATE', i.dataNascimento, '%Y-%m-%d')) = :mes")
-    List<Idoso> findAniversariantes(@Param("dia") int dia, @Param("mes") int mes);
+    @Query("SELECT i FROM Idoso i WHERE SUBSTRING(i.dataNascimento, 6, 2) = :mes AND SUBSTRING(i.dataNascimento, 9, 2) = :dia")
+    List<Idoso> findAniversariantes(@Param("dia") String dia, @Param("mes") String mes);
 
-    @Query("SELECT i FROM Idoso i WHERE FUNCTION('MONTH', FUNCTION('STR_TO_DATE', i.dataNascimento, '%Y-%m-%d')) = :mes")
-    List<Idoso> findByMesAniversario(@Param("mes") int mes);
+    @Query("SELECT i FROM Idoso i WHERE SUBSTRING(i.dataNascimento, 6, 2) = :mes")
+    List<Idoso> findByMesAniversario(@Param("mes") String mes);
 }

@@ -51,13 +51,15 @@ public class IdosoService {
 
     public List<IdosoDTO> obterAniversariantesHoje() {
         LocalDate hoje = LocalDate.now();
-        return repository.findAniversariantes(hoje.getDayOfMonth(), hoje.getMonthValue())
+        String dia = String.format("%02d", hoje.getDayOfMonth());
+        String mes = String.format("%02d", hoje.getMonthValue());
+        return repository.findAniversariantes(dia, mes)
                 .stream().map(this::converterParaDTO).collect(Collectors.toList());
     }
 
     public List<IdosoDTO> obterAniversariantesDoMes() {
-        int mesAtual = LocalDate.now().getMonthValue();
-        return repository.findByMesAniversario(mesAtual)
+        String mes = String.format("%02d", LocalDate.now().getMonthValue());
+        return repository.findByMesAniversario(mes)
                 .stream().map(this::converterParaDTO).collect(Collectors.toList());
     }
 
