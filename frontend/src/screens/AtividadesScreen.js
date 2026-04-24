@@ -10,7 +10,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import LoadingOverlay from '../components/LoadingOverlay';
 import colors from '../theme/colors';
 
-export default function AtividadesScreen() {
+export default function AtividadesScreen({ navigation }) {
   const hoje = new Date();
   const [mes, setMes] = useState(hoje.getMonth() + 1);
   const [ano, setAno] = useState(hoje.getFullYear());
@@ -96,7 +96,7 @@ export default function AtividadesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <ScreenHeader title="Atividades" />
+      <ScreenHeader title="Atividades" onBack={() => navigation.goBack()} />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 80 }}
