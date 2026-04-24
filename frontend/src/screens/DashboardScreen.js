@@ -10,8 +10,10 @@ import { getCardapioHoje } from '../services/cardapioService';
 import { getAtividades, getAtividadesHoje } from '../services/atividadeService';
 import { getUsuariosCount } from '../services/usuarioService';
 import { getIdososSemVisita } from '../services/visitaService';
+import { testarAgora } from '../services/notificacaoService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StatCard from '../components/StatCard';
+import Toast from '../components/Toast';
 import colors from '../theme/colors';
 
 export default function DashboardScreen({ navigation }) {
@@ -23,6 +25,16 @@ export default function DashboardScreen({ navigation }) {
   const [aniversariantes, setAniversariantes] = useState([]);
   const [atividadesHoje, setAtividadesHoje] = useState([]);
   const [semVisita, setSemVisita] = useState([]);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+
+  async function dispararDebug() {
+    const r = await testarAgora('AssisConnect Debug', 'Notificacao de teste disparada!');
+    setToast({
+      visible: true,
+      message: r.sucesso ? 'Notificacao enviada em 2s!' : `Falha: ${r.motivo}`,
+      type: r.sucesso ? 'success' : 'error',
+    });
+  }
   const [diasRegistrados, setDiasRegistrados] = useState(0);
   const [totalDiasMes, setTotalDiasMes] = useState(0);
 
@@ -110,6 +122,9 @@ export default function DashboardScreen({ navigation }) {
           <Text style={styles.headerTitle}>Inicio</Text>
         </View>
         <View style={styles.headerActions}>
+          <Pressable onPress={dispararDebug} style={styles.headerBtn}>
+            <Feather name="zap" size={20} color={colors.white} />
+          </Pressable>
           <Pressable onPress={() => navigation.navigate('Profile')} style={styles.headerBtn}>
             <Feather name="user" size={20} color={colors.white} />
           </Pressable>
@@ -118,6 +133,7 @@ export default function DashboardScreen({ navigation }) {
           </Pressable>
         </View>
       </View>
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(t => ({ ...t, visible: false }))} />
 
       {/* Stats Cards */}
       <View style={styles.statsRow}>
