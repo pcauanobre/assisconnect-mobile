@@ -3,6 +3,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import IdososListScreen from '../screens/idosos/IdososListScreen';
 import IdosoDetailScreen from '../screens/idosos/IdosoDetailScreen';
 import IdosoFormScreen from '../screens/idosos/IdosoFormScreen';
+import MedicamentosScreen from '../screens/idosos/MedicamentosScreen';
+import SaudeScreen from '../screens/idosos/SaudeScreen';
+import VisitasScreen from '../screens/idosos/VisitasScreen';
+import HistoricoPresencaScreen from '../screens/idosos/HistoricoPresencaScreen';
 import colors from '../theme/colors';
 
 const Stack = createNativeStackNavigator();
@@ -32,6 +36,26 @@ export default function IdososStack() {
         options={({ route }) => ({
           title: route.params?.id ? 'Editar Idoso' : 'Novo Idoso',
         })}
+      />
+      <Stack.Screen
+        name="Medicamentos"
+        component={MedicamentosScreen}
+        options={{ title: 'Medicamentos' }}
+      />
+      <Stack.Screen
+        name="Saude"
+        component={SaudeScreen}
+        options={{ title: 'Saude' }}
+      />
+      <Stack.Screen
+        name="Visitas"
+        component={VisitasScreen}
+        options={{ title: 'Visitas' }}
+      />
+      <Stack.Screen
+        name="HistoricoPresenca"
+        component={HistoricoPresencaScreen}
+        options={{ title: 'Historico de Presenca' }}
       />
     </Stack.Navigator>
   );

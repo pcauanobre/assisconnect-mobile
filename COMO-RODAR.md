@@ -64,6 +64,20 @@ npx expo start
 - Escaneie o QR code com o **Expo Go** no celular
 - Ou pressione `w` para abrir no navegador
 
+### Celular via Expo Go — IP da máquina
+
+No celular, `localhost` aponta pro próprio celular. Precisa usar o IP real do PC:
+
+1. Descubra o IP: rode `ipconfig` no Windows → pegue o **Endereço IPv4** do Wi-Fi
+2. Edite `frontend/src/api.js` e troque o IP na linha do celular:
+   ```js
+   : 'http://SEU_IP:8080'; // celular → IP do PC na rede
+   ```
+
+**IP atual (casa — rede 192.168.15.x):** `192.168.15.10`
+
+> Se trocar de rede (ex: faculdade), o IP muda. Repita o `ipconfig` e atualize o arquivo.
+
 ---
 
 ## Login padrão
