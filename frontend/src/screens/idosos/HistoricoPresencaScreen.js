@@ -78,7 +78,7 @@ export default function HistoricoPresencaScreen({ route }) {
       <View style={styles.statsCard}>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{presentes}</Text>
-          <Text style={styles.statLabel}>Presencas</Text>
+          <Text style={styles.statLabel}>Presenças</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: colors.danger }]}>{totalComAtv - presentes}</Text>
@@ -86,7 +86,7 @@ export default function HistoricoPresencaScreen({ route }) {
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: colors.success }]}>{pct}%</Text>
-          <Text style={styles.statLabel}>Presenca</Text>
+          <Text style={styles.statLabel}>Presença</Text>
         </View>
       </View>
 

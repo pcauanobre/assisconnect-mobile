@@ -49,7 +49,7 @@ export async function agendarLembreteDiario(hora = 8, minuto = 0) {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: 'AssisConnect',
-        body: 'Nao esqueca de registrar a presenca dos idosos hoje!',
+        body: 'Não esqueça de registrar a presença dos idosos hoje!',
         sound: 'default',
       },
       trigger: {
@@ -82,8 +82,8 @@ export async function agendarAniversarios(listaIdosos) {
 
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'Aniversario!',
-          body: `Hoje e aniversario de ${i.nome}!`,
+          title: 'Aniversário!',
+          body: `Hoje é aniversário de ${i.nome}!`,
           sound: 'default',
         },
         trigger: { date: dataAniv },

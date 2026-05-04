@@ -75,11 +75,11 @@ export default function RegistroDiarioScreen() {
 
   async function handleSave() {
     if (!selectedAtividade) {
-      Alert.alert('Atencao', 'Selecione uma atividade.');
+      Alert.alert('Atenção', 'Selecione uma atividade.');
       return;
     }
     if (presentes.size === 0) {
-      Alert.alert('Atencao', 'Selecione pelo menos um idoso.');
+      Alert.alert('Atenção', 'Selecione pelo menos um idoso.');
       return;
     }
 
@@ -103,11 +103,11 @@ export default function RegistroDiarioScreen() {
         horaRegistro: hora,
         presentes: presentesList,
       });
-      Alert.alert('Sucesso', 'Presencas registradas!');
+      Alert.alert('Sucesso', 'Presenças registradas!');
       setPresentes(new Set());
       loadData();
     } catch (e) {
-      Alert.alert('Erro', 'Nao foi possivel salvar.');
+      Alert.alert('Erro', 'Não foi possível salvar.');
     }
   }
 
@@ -125,7 +125,7 @@ export default function RegistroDiarioScreen() {
       setShowNewAtiv(false);
       loadData();
     } catch (e) {
-      Alert.alert('Erro', 'Nao foi possivel criar atividade.');
+      Alert.alert('Erro', 'Não foi possível criar atividade.');
     }
   }
 
@@ -141,7 +141,7 @@ export default function RegistroDiarioScreen() {
       setConsultaData(allPresentes);
       setShowConsulta(true);
     } catch (e) {
-      Alert.alert('Erro', 'Nao foi possivel consultar.');
+      Alert.alert('Erro', 'Não foi possível consultar.');
     }
   }
 
@@ -153,7 +153,7 @@ export default function RegistroDiarioScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
-      <ScreenHeader title="Registro Diario" />
+      <ScreenHeader title="Registro Diário" />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}
@@ -187,7 +187,7 @@ export default function RegistroDiarioScreen() {
         />
 
         {/* Search & Attendance */}
-        <Text style={[styles.label, { marginTop: 16, color: c.textPrimary, fontSize: scale(14) }]}>Registro de Presenca</Text>
+        <Text style={[styles.label, { marginTop: 16, color: c.textPrimary, fontSize: scale(14) }]}>Registro de Presença</Text>
         <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar idoso..." />
 
         {filteredIdosos.map((idoso) => (
@@ -223,7 +223,7 @@ export default function RegistroDiarioScreen() {
           style={({ pressed }) => [styles.saveBtn, { backgroundColor: c.primary }, pressed && { opacity: 0.8 }]}
           onPress={handleSave}
         >
-          <Text style={[styles.saveBtnText, { fontSize: scale(16) }]}>Salvar Presencas ({presentes.size})</Text>
+          <Text style={[styles.saveBtnText, { fontSize: scale(16) }]}>Salvar Presenças ({presentes.size})</Text>
         </Pressable>
       </ScrollView>
 
@@ -285,7 +285,7 @@ export default function RegistroDiarioScreen() {
       <Modal visible={showConsulta} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: c.white }]}>
-            <Text style={[styles.modalTitle, { color: c.textPrimary, fontSize: scale(18) }]}>Presencas - {selectedAtividade}</Text>
+            <Text style={[styles.modalTitle, { color: c.textPrimary, fontSize: scale(18) }]}>Presenças - {selectedAtividade}</Text>
             {consultaData.length > 0 ? (
               consultaData.map((p, i) => (
                 <View key={i} style={styles.consultaRow}>
@@ -295,7 +295,7 @@ export default function RegistroDiarioScreen() {
                 </View>
               ))
             ) : (
-              <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(14) }]}>Nenhuma presenca registrada</Text>
+              <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(14) }]}>Nenhuma presença registrada</Text>
             )}
             <Pressable onPress={() => setShowConsulta(false)}>
               <Text style={[styles.cancelText, { color: c.textSecondary, fontSize: scale(14) }]}>Fechar</Text>

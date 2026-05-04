@@ -56,7 +56,7 @@ export default function AtividadesScreen({ navigation }) {
 
   async function criarAtividade() {
     if (!form.nome.trim()) {
-      Alert.alert('Atencao', 'Informe o nome da atividade.');
+      Alert.alert('Atenção', 'Informe o nome da atividade.');
       return;
     }
     try {
@@ -67,7 +67,7 @@ export default function AtividadesScreen({ navigation }) {
       setModalVisible(false);
       setForm({ nome: '', dataRegistro: hoje.toISOString().slice(0, 10), horaRegistro: '14:00' });
       await carregar();
-      Alert.alert('Sucesso', 'Atividade criada. Registre presenca na aba Registro.');
+      Alert.alert('Sucesso', 'Atividade criada. Registre presença na aba Registro.');
     } catch { Alert.alert('Erro', 'Falha ao criar atividade.'); }
   }
 
@@ -123,7 +123,7 @@ export default function AtividadesScreen({ navigation }) {
             <Text style={styles.statValue}>
               {atividadesMes.reduce((acc, a) => acc + (a.presentes || []).length, 0)}
             </Text>
-            <Text style={styles.statLabel}>Presencas</Text>
+            <Text style={styles.statLabel}>Presenças</Text>
           </View>
           <View style={styles.statCard}>
             <Feather name="star" size={18} color={colors.primary} />
@@ -143,7 +143,7 @@ export default function AtividadesScreen({ navigation }) {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rankingNome}>{r.nome}</Text>
                   <Text style={styles.rankingSub}>
-                    {r.qtd} evento(s) — {r.totalPresentes} presenca(s)
+                    {r.qtd} evento(s) — {r.totalPresentes} presença(s)
                   </Text>
                 </View>
                 <Feather name="trending-up" size={16} color={colors.success} />
@@ -155,7 +155,7 @@ export default function AtividadesScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Todas as atividades</Text>
           {atividadesOrdenadas.length === 0 ? (
-            <Text style={styles.emptyText}>Nenhuma atividade neste mes</Text>
+            <Text style={styles.emptyText}>Nenhuma atividade neste mês</Text>
           ) : (
             atividadesOrdenadas.map((a) => (
               <View key={a.id} style={styles.atividadeCard}>

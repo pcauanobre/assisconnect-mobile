@@ -36,12 +36,12 @@ export default function NotificacoesScreen() {
 
   async function aplicar() {
     if (!suportado) {
-      showToast('Notificacoes nao disponiveis na web', 'warn');
+      showToast('Notificações não disponíveis na web', 'warn');
       return;
     }
     const permitido = await pedirPermissao();
     if (!permitido) {
-      showToast('Permissao de notificacao negada', 'error');
+      showToast('Permissão de notificação negada', 'error');
       return;
     }
 
@@ -64,17 +64,15 @@ export default function NotificacoesScreen() {
       aniversariosAtivo,
       horaLembrete: h,
     });
-    showToast('Configuracoes aplicadas com sucesso!', 'success');
+    showToast('Configurações aplicadas com sucesso!', 'success');
   }
 
   async function testar() {
-    // Sempre mostra o toast (funciona em qualquer plataforma)
-    showToast('Notificacao de teste disparada!', 'success');
-    // Se o sistema suportar, tambem dispara uma push de verdade
+    showToast('Notificação de teste disparada!', 'success');
     if (suportado) {
       const r = await testarAgora(
         'AssisConnect - Teste',
-        'Se voce recebeu essa, as notificacoes estao funcionando!'
+        'Se você recebeu essa, as notificações estão funcionando!'
       );
       if (!r.sucesso && r.motivo) {
         setTimeout(() => showToast(`Push nativa: ${r.motivo}`, 'warn'), 3000);
@@ -84,13 +82,13 @@ export default function NotificacoesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <ScreenHeader title="Notificacoes" />
+      <ScreenHeader title="Notificações" />
       <ScrollView contentContainerStyle={{ padding: 12 }}>
         {!suportado && (
           <View style={styles.alert}>
             <Feather name="alert-circle" size={16} color="#d97706" />
             <Text style={styles.alertText}>
-              Notificacoes so funcionam no app mobile (nao na web).
+              Notificações só funcionam no app mobile (não na web).
             </Text>
           </View>
         )}
@@ -98,8 +96,8 @@ export default function NotificacoesScreen() {
         <View style={styles.section}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Lembrete diario de presenca</Text>
-              <Text style={styles.sub}>Receba um lembrete todos os dias no horario escolhido.</Text>
+              <Text style={styles.label}>Lembrete diário de presença</Text>
+              <Text style={styles.sub}>Receba um lembrete todos os dias no horário escolhido.</Text>
             </View>
             <Switch
               value={lembreteDiarioAtivo}
@@ -109,7 +107,7 @@ export default function NotificacoesScreen() {
           </View>
           {lembreteDiarioAtivo && (
             <View style={styles.horaRow}>
-              <Text style={styles.label}>Horario (hora):</Text>
+              <Text style={styles.label}>Horário (hora):</Text>
               <TextInput
                 style={styles.input} value={hora}
                 onChangeText={setHora}
@@ -123,8 +121,8 @@ export default function NotificacoesScreen() {
         <View style={styles.section}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Avisar aniversarios dos idosos</Text>
-              <Text style={styles.sub}>Notificacao no dia do aniversario de cada idoso.</Text>
+              <Text style={styles.label}>Avisar aniversários dos idosos</Text>
+              <Text style={styles.sub}>Notificação no dia do aniversário de cada idoso.</Text>
             </View>
             <Switch
               value={aniversariosAtivo}
@@ -136,17 +134,17 @@ export default function NotificacoesScreen() {
 
         <TouchableOpacity style={styles.btnAplicar} onPress={aplicar}>
           <Feather name="check-circle" size={16} color={colors.white} />
-          <Text style={styles.btnAplicarTxt}>Aplicar configuracoes</Text>
+          <Text style={styles.btnAplicarTxt}>Aplicar configurações</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.btnDebug} onPress={testar}>
           <Feather name="zap" size={16} color={colors.primary} />
-          <Text style={styles.btnDebugTxt}>Modo debug: testar notificacao</Text>
+          <Text style={styles.btnDebugTxt}>Modo debug: testar notificação</Text>
         </TouchableOpacity>
 
         <Text style={styles.footerNote}>
-          O botao de teste dispara um toast in-app imediatamente e, se o app estiver rodando no celular,
-          tambem agenda uma push nativa em 2 segundos.
+          O botão de teste dispara um toast in-app imediatamente e, se o app estiver rodando no celular,
+          também agenda uma push nativa em 2 segundos.
         </Text>
       </ScrollView>
 

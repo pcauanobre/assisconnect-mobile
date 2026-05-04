@@ -36,7 +36,7 @@ export default function ProfileScreen({ navigation }) {
 
   async function handleSave() {
     if (!nome.trim()) {
-      Alert.alert('Atencao', 'Informe o nome.');
+      Alert.alert('Atenção', 'Informe o nome.');
       return;
     }
 
@@ -51,7 +51,7 @@ export default function ProfileScreen({ navigation }) {
       Alert.alert('Sucesso', 'Perfil atualizado!');
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Erro', 'Nao foi possivel atualizar o perfil.');
+      Alert.alert('Erro', 'Não foi possível atualizar o perfil.');
     } finally {
       setLoading(false);
     }
@@ -110,11 +110,11 @@ export default function ProfileScreen({ navigation }) {
       </Pressable>
 
       <View style={styles.menuSection}>
-        <Text style={[styles.menuTitle, { color: c.textSecondary, fontSize: scale(13) }]}>Configuracoes</Text>
+        <Text style={[styles.menuTitle, { color: c.textSecondary, fontSize: scale(13) }]}>Configurações</Text>
 
         <Pressable style={[styles.menuRow, { backgroundColor: c.white }]} onPress={() => navigation.navigate('Notificacoes')}>
           <Feather name="bell" size={18} color={c.primary} />
-          <Text style={[styles.menuLabel, { color: c.textPrimary, fontSize: scale(14) }]}>Notificacoes</Text>
+          <Text style={[styles.menuLabel, { color: c.textPrimary, fontSize: scale(14) }]}>Notificações</Text>
           <Feather name="chevron-right" size={18} color={c.textSecondary} />
         </Pressable>
 
@@ -131,7 +131,7 @@ export default function ProfileScreen({ navigation }) {
               try {
                 const res = await getBackup();
                 const count = Object.keys(res.data).length;
-                Alert.alert('Backup gerado', `JSON com ${count} colecoes baixado do servidor.`);
+                Alert.alert('Backup gerado', `JSON com ${count} coleções baixado do servidor.`);
               } catch {
                 Alert.alert('Erro', 'Falha ao gerar backup.');
               }
