@@ -1,8 +1,7 @@
 package com.assisconnect.controller;
 
 import com.assisconnect.entity.Usuario;
-import com.assisconnect.repository.UsuarioRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.assisconnect.service.AuthService;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,54 +13,38 @@ import java.util.Optional;
 @CrossOrigin(origins = "*")
 public class AuthController {
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    private final AuthService authService;
 
-    /* ==========================================================
-       REGISTRO  – não permite usuário duplicado
-       ========================================================== */
-    @PostMapping("/register")
-    public ResponseEntity<?> registrar(@RequestBody Usuario usuario) {
-
-        String login = (usuario.getUsuario() == null) ? "" : usuario.getUsuario().trim();
-        if (login.isBlank() || usuario.getSenha() == null || usuario.getSenha().isBlank())
-            return ResponseEntity.badRequest().body("Usuário e senha são obrigatórios");
-
-        // PK = usuario
-        if (usuarioRepository.existsById(login))
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Usuário já cadastrado");
-
-        usuario.setUsuario(login);
-        Usuario salvo = usuarioRepository.save(usuario);
-        salvo.setSenha(null);
-        return ResponseEntity.status(HttpStatus.CREATED).body(salvo);
+    public AuthController(AuthService authService) {
+        this.authService = authService;
     }
 
-    /* ==========================================================
-       LOGIN (EMAIL + SENHA)
-       payload esperado:
-       { "email": "...", "senha": "..." }
-       ========================================================== */
+    @PostMapping("/register")
+    public ResponseEntity<?> registrar(@RequestBody Usuario usuario) {
+        try {
+            Usuario salvo = authService.registrar(usuario);
+            salvo.setSenha(null);
+            return ResponseEntity.status(HttpStatus.CREATED).body(salvo);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> cred) {
-
-        String email = cred.get("email") == null ? "" : cred.get("email").trim();
-        String senha = cred.get("senha") == null ? "" : cred.get("senha").trim();
+        String email = cred.getOrDefault("email", "").trim();
+        String senha = cred.getOrDefault("senha", "").trim();
 
         if (email.isBlank() || senha.isBlank())
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("erro");
 
-        Optional<Usuario> opt = usuarioRepository.findByEmail(email);
-        if (opt.isEmpty())
+        Optional<Usuario> resultado = authService.login(email, senha);
+        if (resultado.isEmpty())
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("erro");
 
-        Usuario u = opt.get();
-        String dbSenha = (u.getSenha() == null) ? "" : u.getSenha().trim();
-
-        if (!dbSenha.equals(senha))
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("erro");
-
-        // DTO sem senha
+        Usuario u = resultado.get();
         Usuario dto = new Usuario();
         dto.setUsuario(u.getUsuario());
         dto.setEmail(u.getEmail());
@@ -73,28 +56,18 @@ public class AuthController {
         return ResponseEntity.ok(dto);
     }
 
-    /* ==========================================================
-       RESETAR SENHA (por email)
-       payload:
-       { "email": "...", "novaSenha": "..." }
-       ========================================================== */
     @PostMapping("/resetar-senha")
     public ResponseEntity<String> resetarSenha(@RequestBody Map<String, String> dados) {
-
-        String email     = dados.get("email") == null ? "" : dados.get("email").trim();
-        String novaSenha = dados.get("novaSenha") == null ? "" : dados.get("novaSenha").trim();
+        String email = dados.getOrDefault("email", "").trim();
+        String novaSenha = dados.getOrDefault("novaSenha", "").trim();
 
         if (email.isBlank() || novaSenha.isBlank())
             return ResponseEntity.badRequest().body("Email e novaSenha são obrigatórios");
 
-        return usuarioRepository.findByEmail(email)
-                .map(u -> {
-                    u.setSenha(novaSenha);
-                    usuarioRepository.save(u);
-                    return ResponseEntity.ok("Senha atualizada com sucesso");
-                })
-                .orElseGet(() -> ResponseEntity
-                        .status(HttpStatus.NOT_FOUND)
-                        .body("Usuário não encontrado"));
+        boolean sucesso = authService.resetarSenha(email, novaSenha);
+        if (!sucesso)
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuário não encontrado");
+
+        return ResponseEntity.ok("Senha atualizada com sucesso");
     }
 }

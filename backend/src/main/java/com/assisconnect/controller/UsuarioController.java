@@ -1,7 +1,6 @@
 package com.assisconnect.controller;
 
-import com.assisconnect.repository.UsuarioRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.assisconnect.service.UsuarioService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,19 +10,20 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "*")
 public class UsuarioController {
 
-    @Autowired
-    private UsuarioRepository repository;
+    private final UsuarioService service;
 
-    // ✅ Retorna a quantidade total de usuários
-    @GetMapping("/quantidade")
-    public long totalUsuarios() {
-        return repository.count();
+    public UsuarioController(UsuarioService service) {
+        this.service = service;
     }
 
-    // ✅ Retorna os dados do usuário logado (sem senha)
+    @GetMapping("/quantidade")
+    public long totalUsuarios() {
+        return service.contar();
+    }
+
     @GetMapping("/perfil/{usuario}")
     public ResponseEntity<?> obterPerfil(@PathVariable String usuario) {
-        return repository.findByUsuario(usuario)
+        return service.buscarPerfil(usuario)
                 .map(u -> {
                     u.setSenha(null);
                     return ResponseEntity.ok(u);

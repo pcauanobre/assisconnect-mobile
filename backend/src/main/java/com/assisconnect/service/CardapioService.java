@@ -74,7 +74,7 @@ public class CardapioService {
     public Map<String, Cardapio> buscarCardapioDeHoje() {
         String diaDaSemana = LocalDate.now()
                 .getDayOfWeek()
-                .getDisplayName(TextStyle.FULL, new Locale("pt", "BR"));
+                .getDisplayName(TextStyle.FULL, Locale.of("pt", "BR"));
 
         diaDaSemana = diaDaSemana.substring(0, 1).toUpperCase() + diaDaSemana.substring(1).split("-")[0];
 

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@SuppressWarnings("null")
 public class IdosoService {
 
     @Autowired
@@ -61,6 +62,14 @@ public class IdosoService {
         String mes = String.format("%02d", LocalDate.now().getMonthValue());
         return repository.findByMesAniversario(mes)
                 .stream().map(this::converterParaDTO).collect(Collectors.toList());
+    }
+
+    public int contarPorMesEAno(int ano, int mes) {
+        return repository.contarPorMesEAno(ano, mes);
+    }
+
+    public long contar() {
+        return repository.count();
     }
 
     private void preencherDados(Idoso idoso, IdosoDTO dto) {
