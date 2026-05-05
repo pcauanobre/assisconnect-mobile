@@ -1,5 +1,6 @@
 package com.assisconnect.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
@@ -13,6 +14,11 @@ public class RegistroSaude {
 
     @Column(name = "idoso_id", nullable = false)
     private Long idosoId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idoso_id", insertable = false, updatable = false)
+    @JsonIgnore
+    private Idoso idoso;
 
     private LocalDate data;
 
@@ -30,6 +36,8 @@ public class RegistroSaude {
 
     public Long getIdosoId() { return idosoId; }
     public void setIdosoId(Long idosoId) { this.idosoId = idosoId; }
+
+    public Idoso getIdoso() { return idoso; }
 
     public LocalDate getData() { return data; }
     public void setData(LocalDate data) { this.data = data; }
