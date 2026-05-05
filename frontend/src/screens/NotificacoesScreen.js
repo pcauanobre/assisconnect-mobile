@@ -19,6 +19,7 @@ export default function NotificacoesScreen() {
   const [lembreteDiarioAtivo, setLembreteDiarioAtivo] = useState(false);
   const [aniversariosAtivo, setAniversariosAtivo] = useState(false);
   const [hora, setHora] = useState('08');
+  const [minuto, setMinuto] = useState('00');
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
 
   function showToast(message, type = 'info') {
@@ -34,6 +35,7 @@ export default function NotificacoesScreen() {
     setLembreteDiarioAtivo(cfg.lembreteDiarioAtivo);
     setAniversariosAtivo(cfg.aniversariosAtivo);
     setHora(String(cfg.horaLembrete || 8).padStart(2, '0'));
+    setMinuto(String(cfg.minutoLembrete ?? 0).padStart(2, '0'));
   }
 
   async function aplicar() {
@@ -49,9 +51,10 @@ export default function NotificacoesScreen() {
 
     await cancelarTodas();
     const h = parseInt(hora, 10) || 8;
+    const m = Math.min(59, Math.max(0, parseInt(minuto, 10) || 0));
 
     if (lembreteDiarioAtivo) {
-      await agendarLembreteDiario(h, 0);
+      await agendarLembreteDiario(h, m);
     }
     if (aniversariosAtivo) {
       try {
@@ -65,6 +68,7 @@ export default function NotificacoesScreen() {
       lembreteDiarioAtivo,
       aniversariosAtivo,
       horaLembrete: h,
+      minutoLembrete: m,
     });
     showToast('Configurações aplicadas com sucesso!', 'success');
   }
@@ -109,13 +113,18 @@ export default function NotificacoesScreen() {
           </View>
           {lembreteDiarioAtivo && (
             <View style={styles.horaRow}>
-              <Text style={styles.label}>Horário (hora):</Text>
+              <Text style={styles.label}>Horário:</Text>
               <TextInput
                 style={styles.input} value={hora}
                 onChangeText={setHora}
                 keyboardType="numeric" maxLength={2} placeholder="08"
               />
-              <Text style={styles.label}>:00</Text>
+              <Text style={styles.label}>:</Text>
+              <TextInput
+                style={styles.input} value={minuto}
+                onChangeText={setMinuto}
+                keyboardType="numeric" maxLength={2} placeholder="00"
+              />
             </View>
           )}
         </View>

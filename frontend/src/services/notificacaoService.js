@@ -120,8 +120,9 @@ export async function lerConfig() {
       lembreteDiarioAtivo: false,
       aniversariosAtivo: false,
       horaLembrete: 8,
+      minutoLembrete: 0,
     };
   } catch {
-    return { lembreteDiarioAtivo: false, aniversariosAtivo: false, horaLembrete: 8 };
+    return { lembreteDiarioAtivo: false, aniversariosAtivo: false, horaLembrete: 8, minutoLembrete: 0 };
   }
 }
