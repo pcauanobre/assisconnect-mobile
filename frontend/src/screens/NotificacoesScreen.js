@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, Switch, TextInput, TouchableOpacity, Alert, Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../components/ScreenHeader';
 import Toast from '../components/Toast';
 import colors from '../theme/colors';
@@ -13,6 +14,7 @@ import {
 } from '../services/notificacaoService';
 
 export default function NotificacoesScreen() {
+  const navigation = useNavigation();
   const [suportado, setSuportado] = useState(true);
   const [lembreteDiarioAtivo, setLembreteDiarioAtivo] = useState(false);
   const [aniversariosAtivo, setAniversariosAtivo] = useState(false);
@@ -82,7 +84,7 @@ export default function NotificacoesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <ScreenHeader title="Notificações" />
+      <ScreenHeader title="Notificações" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: 12 }}>
         {!suportado && (
           <View style={styles.alert}>
