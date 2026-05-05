@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import ScreenHeader from '../components/ScreenHeader';
@@ -10,17 +10,36 @@ export default function AcessibilidadeScreen({ navigation }) {
   const { config, setFontScale, setHighContrast, setDarkMode, scale, activeColors: c } = useAccessibility();
 
   const ESCALAS = [
-    { valor: 1, label: 'Padrao' },
+    { valor: 1, label: 'Padrão' },
     { valor: 1.15, label: 'Grande' },
     { valor: 1.3, label: 'Muito grande' },
   ];
 
+  function restaurarPadrao() {
+    Alert.alert(
+      'Restaurar padrões',
+      'Isso vai redefinir fonte, contraste e modo escuro para os valores originais.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Restaurar',
+          style: 'destructive',
+          onPress: () => {
+            setFontScale(1);
+            setHighContrast(false);
+            setDarkMode(false);
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: c.surface }}>
       <ScreenHeader title="Acessibilidade" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: 12 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 12 }}>
 
-        {/* Tamanho da fonte */}
         <View style={[styles.section, { backgroundColor: c.white, borderColor: c.border }]}>
           <Text style={[styles.title, { fontSize: scale(15), color: c.primary }]}>
             Tamanho da fonte
@@ -51,16 +70,18 @@ export default function AcessibilidadeScreen({ navigation }) {
             ))}
           </View>
           <View style={[styles.preview, { backgroundColor: c.surface }]}>
+            <Text style={[styles.previewSub, { fontSize: scale(12), color: c.textSecondary }]}>
+              Exemplo de texto secundário
+            </Text>
             <Text style={[styles.previewText, { fontSize: scale(14), color: c.textPrimary }]}>
-              Exemplo: texto do aplicativo
+              Texto padrão do aplicativo
             </Text>
             <Text style={[styles.previewTitle, { fontSize: scale(18), color: c.primary }]}>
-              Titulo de exemplo
+              Título de exemplo
             </Text>
           </View>
         </View>
 
-        {/* Alto contraste */}
         <View style={[styles.section, { backgroundColor: c.white, borderColor: c.border }]}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -68,7 +89,7 @@ export default function AcessibilidadeScreen({ navigation }) {
                 Alto contraste
               </Text>
               <Text style={[styles.sub, { fontSize: scale(12), color: c.textSecondary }]}>
-                Cores mais fortes, bordas mais visiveis, leitura facilitada.
+                Cores mais fortes, bordas mais visíveis, leitura facilitada.
               </Text>
             </View>
             <Switch
@@ -79,7 +100,6 @@ export default function AcessibilidadeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Modo escuro */}
         <View style={[styles.section, { backgroundColor: c.white, borderColor: c.border }]}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -89,6 +109,14 @@ export default function AcessibilidadeScreen({ navigation }) {
               <Text style={[styles.sub, { fontSize: scale(12), color: c.textSecondary }]}>
                 Fundo escuro para ambientes com pouca luz.
               </Text>
+              {config.highContrast && (
+                <View style={[styles.disabledBadge, { backgroundColor: c.accent }]}>
+                  <Feather name="lock" size={11} color={c.textSecondary} />
+                  <Text style={[styles.disabledText, { fontSize: scale(11), color: c.textSecondary }]}>
+                    Desativado no modo alto contraste
+                  </Text>
+                </View>
+              )}
             </View>
             <Switch
               value={config.darkMode}
@@ -102,9 +130,20 @@ export default function AcessibilidadeScreen({ navigation }) {
         <View style={[styles.infoBox, { backgroundColor: c.accent }]}>
           <Feather name="info" size={16} color={c.primary} />
           <Text style={[styles.infoText, { fontSize: scale(12), color: c.textPrimary }]}>
-            As preferencias sao salvas no dispositivo e aplicadas em todas as telas do app.
+            As preferências são salvas no dispositivo e aplicadas em todas as telas do app.
           </Text>
         </View>
+
+        <TouchableOpacity
+          style={[styles.resetBtn, { borderColor: c.border }]}
+          onPress={restaurarPadrao}
+        >
+          <Feather name="refresh-ccw" size={14} color={c.textSecondary} />
+          <Text style={[styles.resetText, { fontSize: scale(13), color: c.textSecondary }]}>
+            Restaurar padrões
+          </Text>
+        </TouchableOpacity>
+
       </ScrollView>
     </View>
   );
@@ -117,12 +156,24 @@ const styles = StyleSheet.create({
   sub: { marginTop: 2 },
   chipsRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-  preview: { marginTop: 12, padding: 12, borderRadius: 8 },
-  previewText: { marginBottom: 4 },
+  preview: { marginTop: 12, padding: 12, borderRadius: 8, gap: 4 },
+  previewSub: {},
+  previewText: { marginBottom: 2 },
   previewTitle: { fontWeight: '800' },
+  disabledBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    marginTop: 6, paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 6, alignSelf: 'flex-start',
+  },
+  disabledText: {},
   infoBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     padding: 12, borderRadius: 8, marginTop: 4,
   },
   infoText: { flex: 1 },
+  resetBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginTop: 12, paddingVertical: 12, borderRadius: 10, borderWidth: 1,
+  },
+  resetText: {},
 });
