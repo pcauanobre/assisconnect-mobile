@@ -12,19 +12,20 @@ import AcessibilidadeScreen from '../screens/AcessibilidadeScreen';
 import SobreScreen from '../screens/SobreScreen';
 import AtividadesScreen from '../screens/AtividadesScreen';
 import TermosUsoScreen, { TERMOS_KEY } from '../screens/TermosUsoScreen';
-import colors from '../theme/colors';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 const RootStack = createNativeStackNavigator();
 
-const defaultHeader = {
-  headerStyle: { backgroundColor: colors.primary },
-  headerTintColor: colors.white,
-  headerTitleStyle: { fontWeight: '700' },
-};
-
 export default function AppNavigator() {
   const { user, isLoading } = useAuth();
+  const { activeColors: c } = useAccessibility();
   const [termosAceitos, setTermosAceitos] = useState(null);
+
+  const defaultHeader = {
+    headerStyle: { backgroundColor: c.primary },
+    headerTintColor: '#fff',
+    headerTitleStyle: { fontWeight: '700' },
+  };
 
   useEffect(() => {
     if (user) {
@@ -38,8 +39,8 @@ export default function AppNavigator() {
 
   if (isLoading || (user && termosAceitos === null)) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.accent} />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.background }}>
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }

@@ -1,39 +1,36 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Modal,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable,
   TextInput, Alert, ScrollView,
 } from 'react-native';
+import BottomSheet from '../../components/BottomSheet';
+import Toast from '../../components/Toast';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import {
-  getVisitasPorIdoso, createVisita, deleteVisita,
-} from '../../services/visitaService';
+import { getVisitasPorIdoso, createVisita, deleteVisita } from '../../services/visitaService';
 import LoadingOverlay from '../../components/LoadingOverlay';
-import colors from '../../theme/colors';
+import { useAccessibility } from '../../contexts/AccessibilityContext';
+import DateInput from '../../components/DateInput';
 
-const PARENTESCOS = ['Filho(a)', 'Neto(a)', 'Sobrinho(a)', 'Irmao(a)', 'Amigo(a)', 'Outro'];
+const PARENTESCOS = ['Filho(a)', 'Neto(a)', 'Sobrinho(a)', 'Irmão(a)', 'Amigo(a)', 'Outro'];
 
 export default function VisitasScreen({ route }) {
   const { idosoId, idosoNome } = route.params;
+  const { activeColors: c, scale } = useAccessibility();
   const [visitas, setVisitas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-
   const today = new Date().toISOString().slice(0, 10);
-  const [form, setForm] = useState({
-    dataVisita: today, nomeVisitante: '', parentesco: 'Filho(a)', observacoes: '',
-  });
+  const [form, setForm] = useState({ dataVisita: today, nomeVisitante: '', parentesco: 'Filho(a)', observacoes: '' });
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
   async function load() {
-    try {
-      setLoading(true);
-      const res = await getVisitasPorIdoso(idosoId);
-      setVisitas(res.data);
-    } catch (e) {
-      console.log('[VISITAS] Erro:', e);
-    } finally { setLoading(false); }
+    try { setLoading(true); const res = await getVisitasPorIdoso(idosoId); setVisitas(res.data); }
+    catch (e) { console.log('[VISITAS] Erro:', e); }
+    finally { setLoading(false); }
   }
 
   function abrirNovo() {
@@ -42,27 +39,20 @@ export default function VisitasScreen({ route }) {
   }
 
   async function salvar() {
-    if (!form.nomeVisitante.trim()) {
-      Alert.alert('Atencao', 'Informe o nome do visitante.');
-      return;
-    }
+    if (!form.nomeVisitante.trim()) { showToast('Informe o nome do visitante.', 'warn'); return; }
     try {
       await createVisita({ ...form, idosoId });
       setModalVisible(false);
+      showToast('Visita registrada com sucesso!', 'success');
       await load();
-    } catch { Alert.alert('Erro', 'Falha ao registrar visita.'); }
+    }
+    catch { showToast('Falha ao registrar visita.', 'error'); }
   }
 
   function confirmarExcluir(v) {
     Alert.alert('Excluir visita', `Visita de ${v.nomeVisitante}?`, [
       { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir', style: 'destructive',
-        onPress: async () => {
-          await deleteVisita(v.id);
-          await load();
-        },
-      },
+      { text: 'Excluir', style: 'destructive', onPress: async () => { await deleteVisita(v.id); await load(); } },
     ]);
   }
 
@@ -73,13 +63,13 @@ export default function VisitasScreen({ route }) {
   if (loading) return <LoadingOverlay />;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.subtitle}>{idosoNome || 'Idoso'}</Text>
-        <Text style={styles.counter}>{visitas.length} visita(s)</Text>
+    <View style={[styles.container, { backgroundColor: c.surface }]}>
+      <View style={[styles.header, { backgroundColor: c.white, borderBottomColor: c.border }]}>
+        <Text style={[styles.subtitle, { color: c.textPrimary }]}>{idosoNome || 'Idoso'}</Text>
+        <Text style={[styles.counter, { color: c.textSecondary }]}>{visitas.length} visita(s)</Text>
         {diasDesdeUltima !== null && (
-          <Text style={[styles.lastVisit, diasDesdeUltima > 30 && { color: colors.danger }]}>
-            {diasDesdeUltima === 0 ? 'Visita hoje' : `Ultima visita ha ${diasDesdeUltima} dia(s)`}
+          <Text style={[styles.lastVisit, { color: diasDesdeUltima > 30 ? c.danger : c.success }]}>
+            {diasDesdeUltima === 0 ? 'Visita hoje' : `Última visita há ${diasDesdeUltima} dia(s)`}
           </Text>
         )}
       </View>
@@ -88,137 +78,121 @@ export default function VisitasScreen({ route }) {
         data={visitas}
         keyExtractor={(v) => String(v.id)}
         contentContainerStyle={{ padding: 12, paddingBottom: 80 }}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Feather name="users" size={48} color={colors.textSecondary} />
-            <Text style={styles.emptyText}>Nenhuma visita registrada</Text>
+            <Feather name="users" size={48} color={c.border} />
+            <Text style={[styles.emptyText, { color: c.textSecondary }]}>Nenhuma visita registrada</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardLeft}>
-              <View style={styles.iconCircle}>
-                <Feather name="user-check" size={18} color={colors.primary} />
-              </View>
+          <View style={[styles.card, { backgroundColor: c.white }]}>
+            <View style={[styles.iconCircle, { backgroundColor: c.accent }]}>
+              <Feather name="user-check" size={18} color={c.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.nomeVisitante}>{item.nomeVisitante}</Text>
-              <Text style={styles.parentesco}>{item.parentesco}</Text>
+              <Text style={[styles.nomeVisitante, { color: c.textPrimary }]}>{item.nomeVisitante}</Text>
+              <Text style={[styles.parentesco, { color: c.primary }]}>{item.parentesco}</Text>
               <View style={styles.dateRow}>
-                <Feather name="calendar" size={11} color={colors.textSecondary} />
-                <Text style={styles.dateText}>{item.dataVisita}</Text>
+                <Feather name="calendar" size={11} color={c.textSecondary} />
+                <Text style={[styles.dateText, { color: c.textSecondary }]}>{item.dataVisita}</Text>
               </View>
-              {!!item.observacoes && <Text style={styles.obs}>{item.observacoes}</Text>}
+              {!!item.observacoes && <Text style={[styles.obs, { color: c.textSecondary }]}>{item.observacoes}</Text>}
             </View>
             <TouchableOpacity onPress={() => confirmarExcluir(item)}>
-              <Feather name="trash-2" size={16} color={colors.danger} />
+              <Feather name="trash-2" size={16} color={c.danger} />
             </TouchableOpacity>
           </View>
         )}
       />
 
-      <TouchableOpacity style={styles.fab} onPress={abrirNovo}>
-        <Feather name="plus" size={26} color={colors.white} />
-      </TouchableOpacity>
+      <Pressable style={[styles.fab, { backgroundColor: c.primary }]} onPress={abrirNovo}>
+        <Feather name="plus" size={24} color="#fff" />
+      </Pressable>
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalBg}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Registrar Visita</Text>
-            <ScrollView style={{ maxHeight: 400 }}>
-              <Text style={styles.label}>Data (AAAA-MM-DD)</Text>
-              <TextInput
-                style={styles.input} value={form.dataVisita}
-                onChangeText={(v) => setForm({ ...form, dataVisita: v })}
-              />
-              <Text style={styles.label}>Nome do visitante *</Text>
-              <TextInput
-                style={styles.input} value={form.nomeVisitante}
-                onChangeText={(v) => setForm({ ...form, nomeVisitante: v })}
-                placeholder="Ex: Maria Silva"
-              />
-              <Text style={styles.label}>Parentesco</Text>
+      <BottomSheet visible={modalVisible} onClose={() => setModalVisible(false)}>
+          <View style={[styles.modalCard, { backgroundColor: c.white }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: c.border }]}>
+              <Text style={[styles.modalTitle, { color: c.textPrimary, fontSize: scale(17) }]}>Registrar Visita</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={10}>
+                <Feather name="x" size={20} color={c.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Data</Text>
+              <DateInput value={form.dataVisita} onChange={(v) => setForm({ ...form, dataVisita: v })} />
+              <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Nome do visitante *</Text>
+              <TextInput style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary }]}
+                value={form.nomeVisitante} onChangeText={(v) => setForm({ ...form, nomeVisitante: v })} placeholder="Ex: Maria Silva" placeholderTextColor={c.textSecondary} />
+              <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Parentesco</Text>
               <View style={styles.chipsRow}>
                 {PARENTESCOS.map((p) => (
                   <TouchableOpacity key={p}
-                    style={[styles.chip, form.parentesco === p && styles.chipActive]}
+                    style={[styles.chip, { backgroundColor: c.white, borderColor: c.border }, form.parentesco === p && { backgroundColor: c.primary, borderColor: c.primary }]}
                     onPress={() => setForm({ ...form, parentesco: p })}>
-                    <Text style={[styles.chipTxt, form.parentesco === p && styles.chipTxtActive]}>{p}</Text>
+                    <Text style={[styles.chipTxt, { color: c.textPrimary }, form.parentesco === p && { color: '#fff', fontWeight: '700' }]}>{p}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
-              <Text style={styles.label}>Observacoes</Text>
-              <TextInput
-                style={[styles.input, { height: 70, textAlignVertical: 'top' }]}
-                value={form.observacoes}
-                onChangeText={(v) => setForm({ ...form, observacoes: v })}
-                placeholder="Detalhes da visita"
-                multiline
-              />
+              <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Observações</Text>
+              <TextInput style={[styles.input, { height: 70, textAlignVertical: 'top', backgroundColor: c.white, borderColor: c.border, color: c.textPrimary }]}
+                value={form.observacoes} onChangeText={(v) => setForm({ ...form, observacoes: v })} placeholder="Detalhes da visita" multiline placeholderTextColor={c.textSecondary} />
             </ScrollView>
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.modalBtn, styles.btnCancel]} onPress={() => setModalVisible(false)}>
-                <Text style={styles.modalBtnTxt}>Cancelar</Text>
+            <View style={[styles.modalActions, { borderTopColor: c.border }]}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }]} onPress={() => setModalVisible(false)}>
+                <Text style={[styles.modalBtnTxt, { color: c.textPrimary, fontSize: scale(14) }]}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.btnSave]} onPress={salvar}>
-                <Text style={[styles.modalBtnTxt, { color: colors.white }]}>Salvar</Text>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: c.primary }]} onPress={salvar}>
+                <Text style={[styles.modalBtnTxt, { color: '#fff', fontSize: scale(14) }]}>Salvar</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
+      </BottomSheet>
+      <Toast visible={toast.visible} message={toast.message} type={toast.type}
+        onHide={() => setToast(t => ({ ...t, visible: false }))} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  header: { backgroundColor: colors.white, padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  subtitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  counter: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  lastVisit: { fontSize: 12, fontWeight: '700', color: colors.success, marginTop: 4 },
+  container: { flex: 1 },
+  header: { padding: 14, borderBottomWidth: 1 },
+  subtitle: { fontSize: 15, fontWeight: '700' },
+  counter: { fontSize: 12, marginTop: 2 },
+  lastVisit: { fontSize: 12, fontWeight: '700', marginTop: 4 },
   empty: { alignItems: 'center', paddingTop: 60 },
-  emptyText: { color: colors.textSecondary, marginTop: 10 },
-  card: {
-    flexDirection: 'row', backgroundColor: colors.white, borderRadius: 12,
-    padding: 12, marginBottom: 10, elevation: 1, alignItems: 'flex-start', gap: 10,
-  },
-  cardLeft: { alignItems: 'center' },
-  iconCircle: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: colors.accent,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  nomeVisitante: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  parentesco: { fontSize: 12, color: colors.primary, fontWeight: '600', marginTop: 2 },
+  emptyText: { marginTop: 10 },
+  card: { flexDirection: 'row', borderRadius: 12, padding: 12, marginBottom: 10, elevation: 1, alignItems: 'flex-start', gap: 10 },
+  iconCircle: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  nomeVisitante: { fontSize: 15, fontWeight: '700' },
+  parentesco: { fontSize: 12, fontWeight: '600', marginTop: 2 },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  dateText: { fontSize: 11, color: colors.textSecondary },
-  obs: { fontSize: 12, color: colors.textSecondary, marginTop: 4, fontStyle: 'italic' },
+  dateText: { fontSize: 11 },
+  obs: { fontSize: 12, marginTop: 4, fontStyle: 'italic' },
   fab: {
-    position: 'absolute', right: 20, bottom: 20, width: 56, height: 56, borderRadius: 28,
-    backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', elevation: 4,
+    position: 'absolute', bottom: 20, right: 20,
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center',
+    elevation: 5,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
   },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalCard: {
-    backgroundColor: colors.surfaceLight, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 20, maxHeight: '90%',
+  modalCard: { borderRadius: 20 },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1,
   },
-  modalTitle: { fontSize: 17, fontWeight: '800', color: colors.primary, marginBottom: 10 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginTop: 8, marginBottom: 4 },
-  input: {
-    backgroundColor: colors.white, borderRadius: 8, padding: 10,
-    borderWidth: 1, borderColor: colors.border, fontSize: 14,
-  },
+  modalBody: { paddingHorizontal: 20, paddingTop: 12, maxHeight: 380 },
+  modalTitle: { fontSize: 17, fontWeight: '800' },
+  label: { fontSize: 13, fontWeight: '600', marginTop: 8, marginBottom: 4 },
+  input: { borderRadius: 8, padding: 10, borderWidth: 1, fontSize: 14 },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  chip: {
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1 },
+  chipTxt: { fontSize: 12 },
+  modalActions: {
+    flexDirection: 'row', gap: 10,
+    paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1,
   },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipTxt: { fontSize: 12, color: colors.textPrimary },
-  chipTxtActive: { color: colors.white, fontWeight: '700' },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  btnCancel: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
-  btnSave: { backgroundColor: colors.primary },
-  modalBtnTxt: { fontWeight: '700', color: colors.textPrimary },
+  modalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
+  modalBtnTxt: { fontWeight: '700', fontSize: 14 },
 });

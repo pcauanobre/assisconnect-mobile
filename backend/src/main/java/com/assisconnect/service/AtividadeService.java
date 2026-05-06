@@ -61,4 +61,8 @@ public class AtividadeService {
     public List<Atividade> buscarAtividadesDeHoje() {
         return repository.findByDataRegistro(LocalDate.now().toString());
     }
+
+    public void deletar(Long id) {
+        repository.deleteById(id);
+    }
 }

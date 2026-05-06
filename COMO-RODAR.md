@@ -74,7 +74,7 @@ No celular, `localhost` aponta pro próprio celular. Precisa usar o IP real do P
    : 'http://SEU_IP:8080'; // celular → IP do PC na rede
    ```
 
-**IP atual (casa — rede 192.168.15.x):** `192.168.15.10`
+**IP atual (rede 10.0.0.x):** `10.0.0.222`
 
 > Se trocar de rede (ex: faculdade), o IP muda. Repita o `ipconfig` e atualize o arquivo.
 

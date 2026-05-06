@@ -7,17 +7,18 @@ import MedicamentosScreen from '../screens/idosos/MedicamentosScreen';
 import SaudeScreen from '../screens/idosos/SaudeScreen';
 import VisitasScreen from '../screens/idosos/VisitasScreen';
 import HistoricoPresencaScreen from '../screens/idosos/HistoricoPresencaScreen';
-import colors from '../theme/colors';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 const Stack = createNativeStackNavigator();
 
 export default function IdososStack() {
+  const { activeColors: c, scale } = useAccessibility();
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: colors.primary, height: 56 },
-        headerTintColor: colors.white,
-        headerTitleStyle: { fontWeight: '700', fontSize: 18 },
+        headerStyle: { backgroundColor: c.primary, height: 56 },
+        headerTintColor: '#fff',
+        headerTitleStyle: { fontWeight: '700', fontSize: scale(18) },
       }}
     >
       <Stack.Screen

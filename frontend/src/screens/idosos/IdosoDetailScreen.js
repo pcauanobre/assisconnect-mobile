@@ -1,17 +1,37 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity, Alert, Pressable } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { getIdoso } from '../../services/idosoService';
+import { getIdoso, deleteIdoso } from '../../services/idosoService';
+import { getRegistrosSaude } from '../../services/saudeService';
+import { getMedicamentosByIdoso } from '../../services/medicamentoService';
+import { getVisitasPorIdoso } from '../../services/visitaService';
 import LoadingOverlay from '../../components/LoadingOverlay';
-import colors from '../../theme/colors';
+import Toast from '../../components/Toast';
+import { useAccessibility } from '../../contexts/AccessibilityContext';
 import { gerarPDFFichaIdoso } from '../../utils/pdfGenerator';
 
 export default function IdosoDetailScreen({ route, navigation }) {
   const { id } = route.params;
+  const { activeColors: c, scale } = useAccessibility();
   const [idoso, setIdoso] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const showToast = (m, t = 'info') => setToast({ visible: true, message: m, type: t });
+
+  function confirmarExcluir() {
+    Alert.alert('Excluir idoso', `Deseja excluir "${idoso.nome}"? Esta ação não pode ser desfeita.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Excluir', style: 'destructive', onPress: async () => {
+        try {
+          await deleteIdoso(id);
+          showToast('Idoso excluído.', 'success');
+          setTimeout(() => navigation.goBack(), 800);
+        } catch { showToast('Falha ao excluir.', 'error'); }
+      }},
+    ]);
+  }
 
   useFocusEffect(useCallback(() => { loadIdoso(); }, []));
 
@@ -21,9 +41,7 @@ export default function IdosoDetailScreen({ route, navigation }) {
       setIdoso(res.data);
     } catch (e) {
       console.log('[IDOSO_DETAIL] Erro:', e);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   function calcularIdade(dataNasc) {
@@ -39,25 +57,33 @@ export default function IdosoDetailScreen({ route, navigation }) {
   async function exportarPDF() {
     try {
       setExportando(true);
-      await gerarPDFFichaIdoso(idoso);
-    } catch (e) {
-      Alert.alert('Erro', 'Nao foi possivel gerar o PDF.');
-    } finally {
-      setExportando(false);
-    }
+      const [saudeRes, medsRes, visitasRes] = await Promise.allSettled([
+        getRegistrosSaude(idoso.id),
+        getMedicamentosByIdoso(idoso.id),
+        getVisitasPorIdoso(idoso.id),
+      ]);
+      await gerarPDFFichaIdoso(
+        idoso,
+        saudeRes.status === 'fulfilled' ? (saudeRes.value?.data || []).slice(0, 5) : [],
+        medsRes.status === 'fulfilled'   ? (medsRes.value?.data  || []).slice(0, 5) : [],
+        visitasRes.status === 'fulfilled' ? (visitasRes.value?.data || []).slice(0, 5) : [],
+      );
+    } catch {
+      Alert.alert('Erro', 'Não foi possível gerar o PDF.');
+    } finally { setExportando(false); }
   }
 
   if (loading) return <LoadingOverlay />;
-  if (!idoso) return <Text style={{ padding: 20 }}>Idoso nao encontrado.</Text>;
+  if (!idoso) return <Text style={{ padding: 20 }}>Idoso não encontrado.</Text>;
 
   const statusLabel = idoso.falecido ? 'Falecido' : idoso.inativo ? 'Inativo' : 'Ativo';
-  const statusColor = idoso.falecido ? colors.textSecondary : idoso.inativo ? '#F59E0B' : colors.success;
+  const statusColor = idoso.falecido ? c.textSecondary : idoso.inativo ? '#F59E0B' : c.success;
 
   const quickActions = [
     { key: 'Medicamentos', icon: 'activity', label: 'Medicamentos', color: '#16a34a' },
-    { key: 'Saude', icon: 'heart', label: 'Saude', color: '#dc2626' },
+    { key: 'Saude', icon: 'heart', label: 'Saúde', color: '#dc2626' },
     { key: 'Visitas', icon: 'users', label: 'Visitas', color: '#2563eb' },
-    { key: 'HistoricoPresenca', icon: 'calendar', label: 'Presenca', color: '#d97706' },
+    { key: 'HistoricoPresenca', icon: 'calendar', label: 'Presença', color: '#d97706' },
   ];
 
   const sections = [
@@ -74,40 +100,41 @@ export default function IdosoDetailScreen({ route, navigation }) {
       ],
     },
     {
-      title: 'Endereco e Contato',
+      title: 'Endereço e Contato',
       fields: [
-        { label: 'Endereco', value: idoso.endereco },
+        { label: 'Endereço', value: idoso.endereco },
         { label: 'Cidade', value: idoso.cidade },
         { label: 'Estado', value: idoso.estado },
         { label: 'CEP', value: idoso.cep },
         { label: 'Telefone', value: idoso.telefoneIdoso },
-        { label: 'Responsavel', value: idoso.responsavel },
-        { label: 'Tel. Responsavel', value: idoso.telefoneResponsavel },
+        { label: 'Responsável', value: idoso.responsavel },
+        { label: 'Tel. Responsável', value: idoso.telefoneResponsavel },
       ],
     },
     {
-      title: 'Saude e Observacoes',
+      title: 'Saúde e Observações',
       fields: [
-        { label: 'Doencas', value: idoso.doencas },
+        { label: 'Doenças', value: idoso.doencas },
         { label: 'Alergias', value: idoso.alergias },
-        { label: 'Plano de Saude', value: idoso.planoSaude },
-        { label: 'Deficiencias', value: idoso.deficiencias },
-        { label: 'Observacoes', value: idoso.observacoes },
+        { label: 'Plano de Saúde', value: idoso.planoSaude },
+        { label: 'Deficiências', value: idoso.deficiencias },
+        { label: 'Observações', value: idoso.observacoes },
       ],
     },
   ];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={[styles.container, { backgroundColor: c.surface }]}>
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.photoSection}>
         {idoso.fotoUrl ? (
           <Image source={{ uri: idoso.fotoUrl }} style={styles.photo} />
         ) : (
-          <View style={[styles.photo, styles.photoPlaceholder]}>
-            <Feather name="user" size={40} color={colors.textSecondary} />
+          <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: c.accent }]}>
+            <Feather name="user" size={40} color={c.textSecondary} />
           </View>
         )}
-        <Text style={styles.name}>{idoso.nome}</Text>
+        <Text style={[styles.name, { color: c.textPrimary }]}>{idoso.nome}</Text>
         <View style={[styles.badge, { backgroundColor: statusColor }]}>
           <Text style={styles.badgeText}>{statusLabel}</Text>
         </View>
@@ -118,78 +145,88 @@ export default function IdosoDetailScreen({ route, navigation }) {
           <TouchableOpacity
             key={a.key}
             style={styles.quickAction}
-            onPress={() =>
-              navigation.navigate(a.key, { idosoId: idoso.id, idosoNome: idoso.nome })
-            }
+            onPress={() => navigation.navigate(a.key, { idosoId: idoso.id, idosoNome: idoso.nome })}
           >
             <View style={[styles.quickActionIcon, { backgroundColor: a.color }]}>
-              <Feather name={a.icon} size={18} color={colors.white} />
+              <Feather name={a.icon} size={18} color="#fff" />
             </View>
-            <Text style={styles.quickActionLabel}>{a.label}</Text>
+            <Text style={[styles.quickActionLabel, { color: c.textPrimary }]}>{a.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <TouchableOpacity
-        style={styles.pdfButton}
-        onPress={exportarPDF}
-        disabled={exportando}
-      >
-        <Feather name="file-text" size={16} color={colors.white} />
-        <Text style={styles.pdfButtonText}>
-          {exportando ? 'Gerando PDF...' : 'Ficha Completa em PDF'}
-        </Text>
+      <TouchableOpacity style={[styles.pdfButton, { backgroundColor: c.primary }]} onPress={exportarPDF} disabled={exportando}>
+        <Feather name="file-text" size={16} color="#fff" />
+        <Text style={[styles.pdfButtonText, { fontSize: scale(13) }]}>{exportando ? 'Gerando PDF...' : 'Ficha Completa em PDF'}</Text>
       </TouchableOpacity>
 
+      <View style={styles.editDeleteRow}>
+        <TouchableOpacity
+          style={[styles.editBtn, { backgroundColor: c.white, borderColor: c.border }]}
+          onPress={() => navigation.navigate('IdosoForm', { id: idoso.id })}
+        >
+          <Feather name="edit-2" size={15} color={c.primary} />
+          <Text style={[styles.editBtnText, { color: c.primary, fontSize: scale(13) }]}>Editar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.deleteBtn, { borderColor: c.danger }]}
+          onPress={confirmarExcluir}
+        >
+          <Feather name="trash-2" size={15} color={c.danger} />
+          <Text style={[styles.deleteBtnText, { color: c.danger, fontSize: scale(13) }]}>Excluir</Text>
+        </TouchableOpacity>
+      </View>
+
       {sections.map((section, si) => (
-        <View key={si} style={styles.section}>
-          <Text style={styles.sectionTitle}>{section.title}</Text>
+        <View key={si} style={[styles.section, { backgroundColor: c.white }]}>
+          <Text style={[styles.sectionTitle, { color: c.primary }]}>{section.title}</Text>
           {section.fields.map((field, fi) => (
-            <View key={fi} style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>{field.label}</Text>
-              <Text style={styles.fieldValue}>{field.value || '-'}</Text>
+            <View key={fi} style={[styles.fieldRow, { borderBottomColor: c.surface }]}>
+              <Text style={[styles.fieldLabel, { color: c.textSecondary }]}>{field.label}</Text>
+              <Text style={[styles.fieldValue, { color: c.textPrimary }]}>{field.value || '-'}</Text>
             </View>
           ))}
         </View>
       ))}
     </ScrollView>
+    <Toast visible={toast.visible} message={toast.message} type={toast.type}
+      onHide={() => setToast(t => ({ ...t, visible: false }))} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
+  container: { flex: 1 },
   content: { paddingBottom: 30 },
   photoSection: { alignItems: 'center', paddingVertical: 20 },
   photo: { width: 100, height: 100, borderRadius: 50 },
-  photoPlaceholder: {
-    backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center',
-  },
-  name: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginTop: 10 },
+  photoPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  name: { fontSize: 20, fontWeight: '800', marginTop: 10 },
   badge: { marginTop: 6, paddingHorizontal: 12, paddingVertical: 3, borderRadius: 12 },
-  badgeText: { fontSize: 12, color: colors.white, fontWeight: '700' },
-  quickActionsRow: {
-    flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 12, paddingBottom: 8,
-  },
+  badgeText: { fontSize: 12, color: '#fff', fontWeight: '700' },
+  quickActionsRow: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 12, paddingBottom: 8 },
   quickAction: { alignItems: 'center', flex: 1 },
-  quickActionIcon: {
-    width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center',
-  },
-  quickActionLabel: { fontSize: 11, color: colors.textPrimary, marginTop: 6, fontWeight: '600' },
+  quickActionIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
+  quickActionLabel: { fontSize: 11, marginTop: 6, fontWeight: '600' },
   pdfButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.primary, marginHorizontal: 12, marginBottom: 6,
-    paddingVertical: 11, borderRadius: 10,
+    marginHorizontal: 12, marginBottom: 6, paddingVertical: 11, borderRadius: 10,
   },
-  pdfButtonText: { color: colors.white, fontWeight: '700', fontSize: 13 },
-  section: {
-    backgroundColor: colors.white, marginHorizontal: 12, marginTop: 12,
-    borderRadius: 12, padding: 14, elevation: 1,
+  pdfButtonText: { color: '#fff', fontWeight: '700' },
+  editDeleteRow: { flexDirection: 'row', gap: 8, marginHorizontal: 12, marginTop: 8 },
+  editBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: 10, borderWidth: 1,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.primary, marginBottom: 10 },
-  fieldRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.surface,
+  editBtnText: { fontWeight: '700' },
+  deleteBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: 10, borderWidth: 1.5,
   },
-  fieldLabel: { fontSize: 13, color: colors.textSecondary, flex: 1 },
-  fieldValue: { fontSize: 13, color: colors.textPrimary, fontWeight: '600', flex: 1.5, textAlign: 'right' },
+  deleteBtnText: { fontWeight: '700' },
+  section: { marginHorizontal: 12, marginTop: 12, borderRadius: 12, padding: 14, elevation: 1 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 10 },
+  fieldRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1 },
+  fieldLabel: { fontSize: 13, flex: 1 },
+  fieldValue: { fontSize: 13, fontWeight: '600', flex: 1.5, textAlign: 'right' },
 });

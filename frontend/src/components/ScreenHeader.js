@@ -7,7 +7,7 @@ import { useAccessibility } from '../contexts/AccessibilityContext';
 const HEADER_HEIGHT = 56;
 
 export default function ScreenHeader({ title, onBack }) {
-  const { activeColors } = useAccessibility();
+  const { activeColors, scale } = useAccessibility();
   const insets = useSafeAreaInsets();
   const topPadding = Platform.OS === 'web' ? 0 : insets.top;
 
@@ -21,7 +21,7 @@ export default function ScreenHeader({ title, onBack }) {
           <Feather name="arrow-left" size={22} color="#fff" />
         </Pressable>
       )}
-      <Text style={[styles.title, { color: '#fff' }]}>{title}</Text>
+      <Text style={[styles.title, { color: '#fff', fontSize: scale(18) }]}>{title}</Text>
     </View>
   );
 }

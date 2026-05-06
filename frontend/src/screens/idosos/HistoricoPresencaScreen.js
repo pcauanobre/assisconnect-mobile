@@ -3,16 +3,14 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { Feather } from '@expo/vector-icons';
 import { getAtividades } from '../../services/atividadeService';
 import LoadingOverlay from '../../components/LoadingOverlay';
-import colors from '../../theme/colors';
+import MonthYearPicker from '../../components/MonthYearPicker';
+import { useAccessibility } from '../../contexts/AccessibilityContext';
 
-const MESES = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-];
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function HistoricoPresencaScreen({ route }) {
   const { idosoId, idosoNome } = route.params;
+  const { activeColors: c, scale } = useAccessibility();
   const hoje = new Date();
   const [mes, setMes] = useState(hoje.getMonth() + 1);
   const [ano, setAno] = useState(hoje.getFullYear());
@@ -64,46 +62,51 @@ export default function HistoricoPresencaScreen({ route }) {
   if (loading) return <LoadingOverlay />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
-      <View style={styles.header}>
-        <Text style={styles.subtitle}>{idosoNome}</Text>
+    <ScrollView
+        showsVerticalScrollIndicator={false} style={[styles.container, { backgroundColor: c.surface }]} contentContainerStyle={{ paddingBottom: 30 }}>
+      <View style={[styles.header, { backgroundColor: c.white, borderBottomColor: c.border }]}>
+        <Text style={[styles.subtitle, { color: c.textPrimary, fontSize: scale(15) }]}>{idosoNome}</Text>
 
         <View style={styles.monthNav}>
           <TouchableOpacity onPress={() => mudarMes(-1)} style={styles.arrow}>
-            <Feather name="chevron-left" size={20} color={colors.primary} />
+            <Feather name="chevron-left" size={20} color={c.primary} />
           </TouchableOpacity>
-          <Text style={styles.monthTitle}>{MESES[mes - 1]} de {ano}</Text>
+          <MonthYearPicker
+            mes={mes}
+            ano={ano}
+            onChange={(m, a) => { setMes(m); setAno(a); }}
+          />
           <TouchableOpacity onPress={() => mudarMes(1)} style={styles.arrow}>
-            <Feather name="chevron-right" size={20} color={colors.primary} />
+            <Feather name="chevron-right" size={20} color={c.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.statsCard}>
+      <View style={[styles.statsCard, { backgroundColor: c.white }]}>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{presentes}</Text>
-          <Text style={styles.statLabel}>Presenças</Text>
+          <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{presentes}</Text>
+          <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Presenças</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.danger }]}>{totalComAtv - presentes}</Text>
-          <Text style={styles.statLabel}>Faltas</Text>
+          <Text style={[styles.statValue, { color: c.danger, fontSize: scale(22) }]}>{totalComAtv - presentes}</Text>
+          <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Faltas</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.success }]}>{pct}%</Text>
-          <Text style={styles.statLabel}>Presença</Text>
+          <Text style={[styles.statValue, { color: c.success, fontSize: scale(22) }]}>{pct}%</Text>
+          <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Presença</Text>
         </View>
       </View>
 
       <View style={styles.legend}>
-        <Legend color={colors.success} label="Presente" />
-        <Legend color={colors.danger} label="Ausente" />
-        <Legend color={colors.border} label="Sem atividade" />
+        <Legend color={c.success} label="Presente" textColor={c.textSecondary} fontSize={scale(11)} />
+        <Legend color={c.danger}  label="Ausente"  textColor={c.textSecondary} fontSize={scale(11)} />
+        <Legend color={c.border}  label="Sem atividade" textColor={c.textSecondary} fontSize={scale(11)} />
       </View>
 
       <View style={styles.calendar}>
         {DIAS_SEMANA.map((ds) => (
           <View key={ds} style={styles.weekLabel}>
-            <Text style={styles.weekLabelText}>{ds}</Text>
+            <Text style={[styles.weekLabelText, { color: c.textSecondary, fontSize: scale(11) }]}>{ds}</Text>
           </View>
         ))}
         {Array.from({ length: new Date(ano, mes - 1, 1).getDay() }).map((_, i) => (
@@ -114,14 +117,16 @@ export default function HistoricoPresencaScreen({ route }) {
             key={d.dia}
             style={[
               styles.day,
-              d.status === 'presente' && { backgroundColor: colors.success },
-              d.status === 'ausente' && { backgroundColor: colors.danger },
-              d.status === 'sem-atividade' && { backgroundColor: colors.border },
+              { backgroundColor: c.white },
+              d.status === 'presente' && { backgroundColor: c.success },
+              d.status === 'ausente' && { backgroundColor: c.danger },
+              d.status === 'sem-atividade' && { backgroundColor: c.border },
             ]}
           >
             <Text style={[
               styles.dayText,
-              (d.status === 'presente' || d.status === 'ausente') && { color: colors.white },
+              { color: c.textPrimary, fontSize: scale(13) },
+              (d.status === 'presente' || d.status === 'ausente') && { color: '#fff' },
             ]}>{d.dia}</Text>
           </View>
         ))}
@@ -130,45 +135,42 @@ export default function HistoricoPresencaScreen({ route }) {
   );
 }
 
-function Legend({ color, label }) {
+function Legend({ color, label, textColor, fontSize }) {
   return (
     <View style={styles.legendItem}>
       <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Text style={styles.legendText}>{label}</Text>
+      <Text style={[styles.legendText, { color: textColor, fontSize }]}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  header: {
-    backgroundColor: colors.white, padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  subtitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  container: { flex: 1 },
+  header: { padding: 14, borderBottomWidth: 1 },
+  subtitle: { fontWeight: '700' },
   monthNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8, gap: 14 },
   arrow: { padding: 6 },
-  monthTitle: { fontSize: 16, fontWeight: '800', color: colors.primary },
   statsCard: {
-    flexDirection: 'row', backgroundColor: colors.white, margin: 12, padding: 14,
+    flexDirection: 'row', margin: 12, padding: 14,
     borderRadius: 12, elevation: 1,
   },
   statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 22, fontWeight: '800', color: colors.primary },
-  statLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+  statValue: { fontWeight: '800' },
+  statLabel: { marginTop: 2 },
   legend: { flexDirection: 'row', justifyContent: 'center', gap: 14, marginBottom: 10 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 12, height: 12, borderRadius: 6 },
-  legendText: { fontSize: 11, color: colors.textSecondary },
+  legendText: {},
   calendar: {
     flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, gap: 6,
   },
   weekLabel: {
     width: 40, height: 28, alignItems: 'center', justifyContent: 'center',
   },
-  weekLabelText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
+  weekLabelText: { fontWeight: '700' },
   day: {
-    width: 40, height: 40, borderRadius: 8, backgroundColor: colors.white,
+    width: 40, height: 40, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
   },
-  dayText: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  dayText: { fontWeight: '700' },
 });

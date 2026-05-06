@@ -1,7 +1,19 @@
-import { Platform } from 'react-native';
+import { Platform, LogBox } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-// Carregamento defensivo do expo-notifications (caso ainda nao instalado)
+const isExpoGo = Constants.appOwnership === 'expo';
+const isWeb = Platform.OS === 'web';
+
+// Suprime o aviso de push remoto no Expo Go SDK 53 —
+// notificações locais funcionam normalmente, só o push remoto foi removido
+LogBox.ignoreLogs([
+  'expo-notifications: Android Push notifications',
+  'expo-notifications: iOS Push notifications',
+  '`expo-notifications` functionality is not fully supported in Expo Go',
+]);
+
+// ─── Suporte nativo (expo-notifications) ─────────────────────────────────────
 let Notifications = null;
 try {
   Notifications = require('expo-notifications');
@@ -14,17 +26,50 @@ try {
       }),
     });
   }
-} catch {
-  console.log('[NOTIF] expo-notifications nao instalado. Rode: npx expo install expo-notifications');
+  // Canal obrigatório no Android 8+ para notificações locais funcionarem
+  if (Platform.OS === 'android' && Notifications?.setNotificationChannelAsync) {
+    Notifications.setNotificationChannelAsync('default', {
+      name: 'AssisConnect',
+      importance: Notifications.AndroidImportance?.MAX ?? 5,
+      vibrationPattern: [0, 250, 250, 250],
+      sound: 'default',
+    }).catch(() => {});
+  }
+} catch {}
+
+export { isExpoGo };
+
+// ─── Web Notifications API ────────────────────────────────────────────────────
+function webSuportado() {
+  return isWeb && typeof window !== 'undefined' && 'Notification' in window;
 }
 
-const STORAGE_KEY = '@notificacoes_config';
+async function pedirPermissaoWeb() {
+  if (!webSuportado()) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  const result = await Notification.requestPermission();
+  return result === 'granted';
+}
+
+function dispararNotificacaoWeb(titulo, corpo, icone = '/favicon.ico') {
+  return new Notification(titulo, {
+    body: corpo,
+    icon: icone,
+    badge: icone,
+    tag: 'assisconnect',
+  });
+}
+
+// ─── API pública ──────────────────────────────────────────────────────────────
 
 export async function isSuportado() {
-  return Notifications !== null && Platform.OS !== 'web';
+  if (isWeb) return webSuportado();
+  return Notifications !== null;
 }
 
 export async function pedirPermissao() {
+  if (isWeb) return pedirPermissaoWeb();
   if (!Notifications) return false;
   try {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -38,27 +83,73 @@ export async function pedirPermissao() {
 }
 
 export async function cancelarTodas() {
+  if (isWeb) return; // Web não tem agendamento persistente
   if (!Notifications) return;
   try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch {}
 }
 
+export async function testarAgora(titulo = 'AssisConnect', corpo = 'Notificação de teste!') {
+  // Web: usa browser Notification API
+  if (isWeb) {
+    const permitido = await pedirPermissaoWeb();
+    if (!permitido) return { sucesso: false, motivo: 'Permissão negada pelo navegador. Clique no cadeado na barra de endereço e permita notificações.' };
+    try {
+      setTimeout(() => dispararNotificacaoWeb(titulo, corpo), 500);
+      return { sucesso: true };
+    } catch (e) {
+      return { sucesso: false, motivo: String(e) };
+    }
+  }
+  // Native: usa expo-notifications
+  if (!Notifications) return { sucesso: false, motivo: 'expo-notifications não instalado' };
+  try {
+    const permitido = await pedirPermissao();
+    if (!permitido) return { sucesso: false, motivo: 'Permissão negada' };
+    await Notifications.scheduleNotificationAsync({
+      content: { title: titulo, body: corpo, sound: 'default' },
+      trigger: {
+        type: 'timeInterval',
+        seconds: 2,
+        repeats: false,
+        ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
+      },
+    });
+    return { sucesso: true };
+  } catch (e) {
+    return { sucesso: false, motivo: String(e) };
+  }
+}
+
 export async function agendarLembreteDiario(hora = 8, minuto = 0) {
+  if (isWeb) {
+    // Web: agenda via setTimeout até meia-noite — não persiste após fechar o browser
+    const agora = new Date();
+    const alvo = new Date();
+    alvo.setHours(hora, minuto, 0, 0);
+    if (alvo <= agora) alvo.setDate(alvo.getDate() + 1);
+    const ms = alvo.getTime() - agora.getTime();
+    const id = setTimeout(async () => {
+      const ok = await pedirPermissaoWeb();
+      if (ok) dispararNotificacaoWeb('AssisConnect', 'Não esqueça de registrar a presença dos idosos hoje!');
+    }, ms);
+    return String(id);
+  }
   if (!Notifications) return null;
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
-    const id = await Notifications.scheduleNotificationAsync({
+    return await Notifications.scheduleNotificationAsync({
       content: {
         title: 'AssisConnect',
         body: 'Não esqueça de registrar a presença dos idosos hoje!',
         sound: 'default',
       },
       trigger: {
+        type: 'daily',
         hour: hora,
         minute: minuto,
-        repeats: true,
+        ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
       },
     });
-    return id;
   } catch (e) {
     console.log('[NOTIF] Erro ao agendar:', e);
     return null;
@@ -66,27 +157,22 @@ export async function agendarLembreteDiario(hora = 8, minuto = 0) {
 }
 
 export async function agendarAniversarios(listaIdosos) {
-  if (!Notifications || !Array.isArray(listaIdosos)) return 0;
+  if (isWeb || !Notifications || !Array.isArray(listaIdosos)) return 0;
   let count = 0;
   const hoje = new Date();
   for (const i of listaIdosos) {
     if (!i.dataNascimento) continue;
     try {
-      const partes = i.dataNascimento.split('-');
-      const mes = parseInt(partes[1], 10);
-      const dia = parseInt(partes[2], 10);
-      // Agenda proximo aniversario
-      let ano = hoje.getFullYear();
-      const dataAniv = new Date(ano, mes - 1, dia, 9, 0, 0);
-      if (dataAniv < hoje) dataAniv.setFullYear(ano + 1);
-
+      const [, mes, dia] = i.dataNascimento.split('-').map(Number);
+      const dataAniv = new Date(hoje.getFullYear(), mes - 1, dia, 9, 0, 0);
+      if (dataAniv < hoje) dataAniv.setFullYear(dataAniv.getFullYear() + 1);
       await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Aniversário!',
-          body: `Hoje é aniversário de ${i.nome}!`,
-          sound: 'default',
+        content: { title: 'Aniversário!', body: `Hoje é aniversário de ${i.nome}!`, sound: 'default' },
+        trigger: {
+          type: 'date',
+          date: dataAniv,
+          ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
         },
-        trigger: { date: dataAniv },
       });
       count++;
     } catch {}
@@ -95,27 +181,12 @@ export async function agendarAniversarios(listaIdosos) {
 }
 
 export async function salvarConfig(config) {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-}
-
-export async function testarAgora(titulo = 'Teste AssisConnect', corpo = 'Notificacao de teste!') {
-  if (!Notifications) return { sucesso: false, motivo: 'expo-notifications nao instalado' };
-  try {
-    const permitido = await pedirPermissao();
-    if (!permitido) return { sucesso: false, motivo: 'Permissao negada' };
-    await Notifications.scheduleNotificationAsync({
-      content: { title: titulo, body: corpo, sound: 'default' },
-      trigger: { seconds: 2 },
-    });
-    return { sucesso: true };
-  } catch (e) {
-    return { sucesso: false, motivo: String(e) };
-  }
+  await AsyncStorage.setItem('@notificacoes_config', JSON.stringify(config));
 }
 
 export async function lerConfig() {
   try {
-    const data = await AsyncStorage.getItem(STORAGE_KEY);
+    const data = await AsyncStorage.getItem('@notificacoes_config');
     return data ? JSON.parse(data) : {
       lembreteDiarioAtivo: false,
       aniversariosAtivo: false,

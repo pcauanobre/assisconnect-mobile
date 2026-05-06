@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, Alert,
+  View, Text, TextInput, Pressable, StyleSheet, Alert, Switch, Platform,
   ActivityIndicator, ScrollView, Image,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -9,6 +9,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { updatePerfil } from '../services/authService';
 import { getBackup } from '../services/backupService';
 import { useAccessibility } from '../contexts/AccessibilityContext';
+import AdminUsuariosModal from '../components/AdminUsuariosModal';
+import Toast from '../components/Toast';
 
 export default function ProfileScreen({ navigation }) {
   const { user, updateProfile } = useAuth();
@@ -18,6 +20,12 @@ export default function ProfileScreen({ navigation }) {
   const [telefone, setTelefone] = useState(user?.telefone || '');
   const [fotoBase64, setFotoBase64] = useState(user?.fotoUrl || '');
   const [loading, setLoading] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+
+  function showToast(message, type = 'info') {
+    setToast({ visible: true, message, type });
+  }
 
   async function pickImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -36,7 +44,7 @@ export default function ProfileScreen({ navigation }) {
 
   async function handleSave() {
     if (!nome.trim()) {
-      Alert.alert('Atenção', 'Informe o nome.');
+      showToast('Informe o nome.', 'warn');
       return;
     }
 
@@ -48,17 +56,18 @@ export default function ProfileScreen({ navigation }) {
       }
       await updatePerfil(user.usuario, data);
       await updateProfile(data);
-      Alert.alert('Sucesso', 'Perfil atualizado!');
-      navigation.goBack();
+      showToast('Perfil atualizado com sucesso!', 'success');
+      setTimeout(() => navigation.goBack(), 900);
     } catch (err) {
-      Alert.alert('Erro', 'Não foi possível atualizar o perfil.');
+      showToast('Não foi possível atualizar o perfil.', 'error');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: c.surface }]} contentContainerStyle={styles.content}>
+    <View style={[styles.container, { backgroundColor: c.surface }]}>
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Pressable onPress={pickImage} style={styles.photoContainer}>
         {fotoBase64 ? (
           <Image source={{ uri: fotoBase64 }} style={styles.photo} />
@@ -127,13 +136,52 @@ export default function ProfileScreen({ navigation }) {
         {user?.administrador && (
           <Pressable
             style={[styles.menuRow, { backgroundColor: c.white }]}
+            onPress={() => setShowAdmin(true)}
+          >
+            <Feather name="users" size={18} color={c.primary} />
+            <Text style={[styles.menuLabel, { color: c.textPrimary, fontSize: scale(14) }]}>Gerenciar Usuários</Text>
+            <Feather name="chevron-right" size={18} color={c.textSecondary} />
+          </Pressable>
+        )}
+
+        {user?.administrador && (
+          <Pressable
+            style={[styles.menuRow, { backgroundColor: c.white }]}
             onPress={async () => {
               try {
+                showToast('Gerando backup...', 'info');
                 const res = await getBackup();
-                const count = Object.keys(res.data).length;
-                Alert.alert('Backup gerado', `JSON com ${count} coleções baixado do servidor.`);
-              } catch {
-                Alert.alert('Erro', 'Falha ao gerar backup.');
+                const json = JSON.stringify(res.data, null, 2);
+                const data = new Date().toISOString().split('T')[0];
+                const nomeArquivo = `assisconnect-backup-${data}.json`;
+
+                if (Platform.OS === 'web') {
+                  // Web: download direto no browser
+                  const blob = new Blob([json], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = nomeArquivo;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                  showToast(`Backup baixado: ${nomeArquivo}`, 'success');
+                } else {
+                  // Mobile: compartilha via sistema
+                  const FileSystem = require('expo-file-system');
+                  const Sharing = require('expo-sharing');
+                  const path = FileSystem.documentDirectory + nomeArquivo;
+                  await FileSystem.writeAsStringAsync(path, json, {
+                    encoding: FileSystem.EncodingType.UTF8,
+                  });
+                  await Sharing.shareAsync(path, {
+                    mimeType: 'application/json',
+                    dialogTitle: 'Salvar backup AssisConnect',
+                  });
+                }
+              } catch (e) {
+                showToast('Falha ao gerar backup', 'error');
               }
             }}
           >
@@ -150,6 +198,11 @@ export default function ProfileScreen({ navigation }) {
         </Pressable>
       </View>
     </ScrollView>
+
+    <AdminUsuariosModal visible={showAdmin} onClose={() => setShowAdmin(false)} />
+    <Toast visible={toast.visible} message={toast.message} type={toast.type}
+      onHide={() => setToast(t => ({ ...t, visible: false }))} />
+    </View>
   );
 }
 

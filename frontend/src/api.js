@@ -22,7 +22,7 @@ import { Platform } from 'react-native';
 // ===================================================================
 const API_BASE = Platform.OS === 'web'
   ? 'http://localhost:8080'       // navegador → backend local
-  : 'http://192.168.15.10:8080'; // celular   → IP do PC na rede
+  : 'http://10.0.0.222:8080'; // celular   → IP do PC na rede
 
 // Cria uma instancia do Axios ja configurada com a URL base
 // Todas as chamadas de API (login, idosos, cardapio, etc.)

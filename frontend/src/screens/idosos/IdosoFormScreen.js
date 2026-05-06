@@ -1,22 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, ScrollView, Pressable, StyleSheet,
-  Alert, ActivityIndicator, Image, Switch,
+  ActivityIndicator, Image, Switch, Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { getIdoso, createIdoso, updateIdoso } from '../../services/idosoService';
-import colors from '../../theme/colors';
+import { getIdoso, createIdoso, updateIdoso, deleteIdoso } from '../../services/idosoService';
+import { useAccessibility } from '../../contexts/AccessibilityContext';
+import DateInput from '../../components/DateInput';
+import Toast from '../../components/Toast';
 
 const SEXO_OPTIONS = ['Masculino', 'Feminino', 'Outro'];
-const ESTADO_CIVIL_OPTIONS = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viuvo(a)', 'Outro'];
+const ESTADO_CIVIL_OPTIONS = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'Outro'];
 
 export default function IdosoFormScreen({ route, navigation }) {
   const editId = route.params?.id;
   const isEdit = !!editId;
+  const { activeColors: c, scale } = useAccessibility();
 
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
   const [foto, setFoto] = useState('');
   const [form, setForm] = useState({
     nome: '', sexo: 'Masculino', dataNascimento: '', estadoCivil: 'Solteiro(a)',
@@ -26,19 +31,16 @@ export default function IdosoFormScreen({ route, navigation }) {
     inativo: false, falecido: false,
   });
 
-  useEffect(() => {
-    if (isEdit) loadIdoso();
-  }, []);
+  useEffect(() => { if (isEdit) loadIdoso(); }, []);
 
   async function loadIdoso() {
     try {
       const res = await getIdoso(editId);
       const d = res.data;
       setForm({
-        nome: d.nome || '', sexo: d.sexo || 'Masculino',
-        dataNascimento: d.dataNascimento || '', estadoCivil: d.estadoCivil || 'Solteiro(a)',
-        rg: d.rg || '', cpf: d.cpf || '', endereco: d.endereco || '',
-        cidade: d.cidade || '', estado: d.estado || '', cep: d.cep || '',
+        nome: d.nome || '', sexo: d.sexo || 'Masculino', dataNascimento: d.dataNascimento || '',
+        estadoCivil: d.estadoCivil || 'Solteiro(a)', rg: d.rg || '', cpf: d.cpf || '',
+        endereco: d.endereco || '', cidade: d.cidade || '', estado: d.estado || '', cep: d.cep || '',
         telefoneIdoso: d.telefoneIdoso || '', responsavel: d.responsavel || '',
         telefoneResponsavel: d.telefoneResponsavel || '', doencas: d.doencas || '',
         alergias: d.alergias || '', planoSaude: d.planoSaude || '',
@@ -46,11 +48,8 @@ export default function IdosoFormScreen({ route, navigation }) {
         inativo: d.inativo || false, falecido: d.falecido || false,
       });
       setFoto(d.fotoUrl || '');
-    } catch (e) {
-      Alert.alert('Erro', 'Nao foi possivel carregar os dados.');
-    } finally {
-      setLoading(false);
-    }
+    } catch { showToast('Não foi possível carregar os dados.', 'error'); }
+    finally { setLoading(false); }
   }
 
   function updateField(key, value) {
@@ -62,234 +61,195 @@ export default function IdosoFormScreen({ route, navigation }) {
   }
 
   async function pickImage() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0].base64) {
-      setFoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
-    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7, base64: true });
+    if (!result.canceled && result.assets[0].base64) setFoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
   }
 
   async function handleSave() {
-    if (!form.nome.trim()) {
-      Alert.alert('Atencao', 'O nome e obrigatorio.');
-      return;
-    }
-
+    if (!form.nome.trim()) { showToast('O nome é obrigatório.', 'warn'); return; }
     try {
       setSaving(true);
-      const payload = {
-        ...form,
-        fotoUrl: foto || '',
-        dataCriacao: isEdit ? undefined : new Date().toISOString().split('T')[0],
-      };
-
-      if (isEdit) {
-        await updateIdoso(editId, payload);
-      } else {
-        await createIdoso(payload);
-      }
-
-      Alert.alert('Sucesso', isEdit ? 'Idoso atualizado!' : 'Idoso cadastrado!');
-      navigation.goBack();
-    } catch (e) {
-      Alert.alert('Erro', 'Nao foi possivel salvar.');
-    } finally {
-      setSaving(false);
-    }
+      const payload = { ...form, fotoUrl: foto || '', dataCriacao: isEdit ? undefined : new Date().toISOString().split('T')[0] };
+      if (isEdit) await updateIdoso(editId, payload);
+      else await createIdoso(payload);
+      showToast(isEdit ? 'Idoso atualizado com sucesso!' : 'Idoso cadastrado com sucesso!', 'success');
+      setTimeout(() => navigation.goBack(), 1000);
+    } catch { showToast('Não foi possível salvar.', 'error'); }
+    finally { setSaving(false); }
   }
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+  function confirmarExcluir() {
+    Alert.alert('Excluir idoso', `Deseja excluir "${form.nome}"? Esta ação não pode ser desfeita.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Excluir', style: 'destructive', onPress: async () => {
+        try {
+          await deleteIdoso(editId);
+          showToast('Idoso excluído.', 'success');
+          setTimeout(() => navigation.goBack(), 800);
+        } catch { showToast('Falha ao excluir.', 'error'); }
+      }},
+    ]);
   }
+
+  const inputStyle = { backgroundColor: c.white, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: c.border, fontSize: 14, color: c.textPrimary };
+
+  if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.surface }}><ActivityIndicator size="large" color={c.primary} /></View>;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      {/* Photo */}
+    <View style={[styles.container, { backgroundColor: c.surface }]}>
+    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <Pressable onPress={pickImage} style={styles.photoContainer}>
-        {foto ? (
-          <Image source={{ uri: foto }} style={styles.photo} />
-        ) : (
-          <View style={[styles.photo, styles.photoPlaceholder]}>
-            <Feather name="camera" size={28} color={colors.textSecondary} />
+        {foto ? <Image source={{ uri: foto }} style={styles.photo} /> : (
+          <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: c.accent }]}>
+            <Feather name="camera" size={28} color={c.textSecondary} />
           </View>
         )}
-        <Text style={styles.photoLabel}>Selecionar foto</Text>
+        <Text style={[styles.photoLabel, { color: c.textSecondary, fontSize: scale(12) }]}>Selecionar foto</Text>
       </Pressable>
 
-      {/* Dados Pessoais */}
-      <Text style={styles.sectionTitle}>Dados Pessoais</Text>
+      <Text style={[styles.sectionTitle, { color: c.primary, fontSize: scale(16) }]}>Dados Pessoais</Text>
 
-      <Text style={styles.label}>Nome *</Text>
-      <TextInput value={form.nome} onChangeText={(v) => updateField('nome', v)} style={styles.input} placeholderTextColor={colors.textSecondary} placeholder="Nome completo" />
+      <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Nome *</Text>
+      <TextInput value={form.nome} onChangeText={(v) => updateField('nome', v)} style={inputStyle} placeholder="Nome completo" placeholderTextColor={c.textSecondary} />
 
-      <Text style={styles.label}>Sexo</Text>
+      <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Sexo</Text>
       <View style={styles.chipRow}>
         {SEXO_OPTIONS.map((opt) => (
-          <Pressable
-            key={opt}
-            style={[styles.chip, form.sexo === opt && styles.chipActive]}
-            onPress={() => updateField('sexo', opt)}
-          >
-            <Text style={[styles.chipText, form.sexo === opt && styles.chipTextActive]}>{opt}</Text>
+          <Pressable key={opt}
+            style={[styles.chip, { borderColor: c.border, backgroundColor: c.surfaceLight }, form.sexo === opt && { backgroundColor: c.primary, borderColor: c.primary }]}
+            onPress={() => updateField('sexo', opt)}>
+            <Text style={[styles.chipText, { color: c.textPrimary }, form.sexo === opt && { color: '#fff', fontWeight: '700' }]}>{opt}</Text>
           </Pressable>
         ))}
       </View>
 
-      <Text style={styles.label}>Data de Nascimento</Text>
-      <TextInput value={form.dataNascimento} onChangeText={(v) => updateField('dataNascimento', v)} style={styles.input} placeholder="AAAA-MM-DD" placeholderTextColor={colors.textSecondary} />
+      <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Data de Nascimento</Text>
+      <DateInput value={form.dataNascimento} onChange={(v) => updateField('dataNascimento', v)} />
 
-      <Text style={styles.label}>Estado Civil</Text>
+      <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Estado Civil</Text>
       <View style={styles.chipRow}>
         {ESTADO_CIVIL_OPTIONS.map((opt) => (
-          <Pressable
-            key={opt}
-            style={[styles.chip, form.estadoCivil === opt && styles.chipActive]}
-            onPress={() => updateField('estadoCivil', opt)}
-          >
-            <Text style={[styles.chipText, form.estadoCivil === opt && styles.chipTextActive]}>{opt}</Text>
+          <Pressable key={opt}
+            style={[styles.chip, { borderColor: c.border, backgroundColor: c.surfaceLight }, form.estadoCivil === opt && { backgroundColor: c.primary, borderColor: c.primary }]}
+            onPress={() => updateField('estadoCivil', opt)}>
+            <Text style={[styles.chipText, { color: c.textPrimary }, form.estadoCivil === opt && { color: '#fff', fontWeight: '700' }]}>{opt}</Text>
           </Pressable>
         ))}
       </View>
 
       <View style={styles.row}>
         <View style={{ flex: 1, marginRight: 8 }}>
-          <Text style={styles.label}>RG</Text>
-          <TextInput value={form.rg} onChangeText={(v) => updateField('rg', v)} style={styles.input} placeholderTextColor={colors.textSecondary} />
+          <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>RG</Text>
+          <TextInput value={form.rg} onChangeText={(v) => updateField('rg', v)} style={inputStyle} placeholderTextColor={c.textSecondary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.label}>CPF</Text>
-          <TextInput value={form.cpf} onChangeText={(v) => updateField('cpf', v)} style={styles.input} placeholderTextColor={colors.textSecondary} />
+          <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>CPF</Text>
+          <TextInput value={form.cpf} onChangeText={(v) => updateField('cpf', v)} style={inputStyle} placeholderTextColor={c.textSecondary} />
         </View>
       </View>
 
-      {/* Endereco */}
-      <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Endereco e Contato</Text>
+      <Text style={[styles.sectionTitle, { color: c.primary, marginTop: 20, fontSize: scale(16) }]}>Endereço e Contato</Text>
 
-      <Text style={styles.label}>Endereco</Text>
-      <TextInput value={form.endereco} onChangeText={(v) => updateField('endereco', v)} style={styles.input} placeholderTextColor={colors.textSecondary} />
+      <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Endereço</Text>
+      <TextInput value={form.endereco} onChangeText={(v) => updateField('endereco', v)} style={inputStyle} placeholderTextColor={c.textSecondary} />
 
       <View style={styles.row}>
         <View style={{ flex: 2, marginRight: 8 }}>
-          <Text style={styles.label}>Cidade</Text>
-          <TextInput value={form.cidade} onChangeText={(v) => updateField('cidade', v)} style={styles.input} placeholderTextColor={colors.textSecondary} />
+          <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Cidade</Text>
+          <TextInput value={form.cidade} onChangeText={(v) => updateField('cidade', v)} style={inputStyle} placeholderTextColor={c.textSecondary} />
         </View>
         <View style={{ flex: 1, marginRight: 8 }}>
-          <Text style={styles.label}>Estado</Text>
-          <TextInput value={form.estado} onChangeText={(v) => updateField('estado', v)} style={styles.input} maxLength={2} placeholderTextColor={colors.textSecondary} />
+          <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Estado</Text>
+          <TextInput value={form.estado} onChangeText={(v) => updateField('estado', v)} style={inputStyle} maxLength={2} placeholderTextColor={c.textSecondary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.label}>CEP</Text>
-          <TextInput value={form.cep} onChangeText={(v) => updateField('cep', v)} style={styles.input} keyboardType="number-pad" placeholderTextColor={colors.textSecondary} />
+          <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>CEP</Text>
+          <TextInput value={form.cep} onChangeText={(v) => updateField('cep', v)} style={inputStyle} keyboardType="number-pad" placeholderTextColor={c.textSecondary} />
         </View>
       </View>
 
-      <Text style={styles.label}>Telefone do Idoso</Text>
-      <TextInput value={form.telefoneIdoso} onChangeText={(v) => updateField('telefoneIdoso', v)} style={styles.input} keyboardType="phone-pad" placeholderTextColor={colors.textSecondary} />
+      <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Telefone do Idoso</Text>
+      <TextInput value={form.telefoneIdoso} onChangeText={(v) => updateField('telefoneIdoso', v)} style={inputStyle} keyboardType="phone-pad" placeholderTextColor={c.textSecondary} />
 
-      <Text style={styles.label}>Responsavel</Text>
-      <TextInput value={form.responsavel} onChangeText={(v) => updateField('responsavel', v)} style={styles.input} placeholderTextColor={colors.textSecondary} />
+      <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Responsável</Text>
+      <TextInput value={form.responsavel} onChangeText={(v) => updateField('responsavel', v)} style={inputStyle} placeholderTextColor={c.textSecondary} />
 
-      <Text style={styles.label}>Tel. Responsavel</Text>
-      <TextInput value={form.telefoneResponsavel} onChangeText={(v) => updateField('telefoneResponsavel', v)} style={styles.input} keyboardType="phone-pad" placeholderTextColor={colors.textSecondary} />
+      <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Tel. Responsável</Text>
+      <TextInput value={form.telefoneResponsavel} onChangeText={(v) => updateField('telefoneResponsavel', v)} style={inputStyle} keyboardType="phone-pad" placeholderTextColor={c.textSecondary} />
 
-      {/* Saude */}
-      <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Saude e Observacoes</Text>
+      <Text style={[styles.sectionTitle, { color: c.primary, marginTop: 20, fontSize: scale(16) }]}>Saúde e Observações</Text>
 
-      <Text style={styles.label}>Doencas</Text>
-      <TextInput value={form.doencas} onChangeText={(v) => updateField('doencas', v)} style={[styles.input, styles.multiline]} multiline placeholderTextColor={colors.textSecondary} />
+      {[
+        { key: 'doencas', label: 'Doenças' },
+        { key: 'alergias', label: 'Alergias' },
+        { key: 'planoSaude', label: 'Plano de Saúde' },
+        { key: 'deficiencias', label: 'Deficiências' },
+        { key: 'observacoes', label: 'Observações' },
+      ].map(({ key, label }) => (
+        <View key={key}>
+          <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>{label}</Text>
+          <TextInput value={form[key]} onChangeText={(v) => updateField(key, v)}
+            style={[inputStyle, key !== 'planoSaude' && { minHeight: 60, textAlignVertical: 'top' }]}
+            multiline={key !== 'planoSaude'} placeholderTextColor={c.textSecondary} />
+        </View>
+      ))}
 
-      <Text style={styles.label}>Alergias</Text>
-      <TextInput value={form.alergias} onChangeText={(v) => updateField('alergias', v)} style={[styles.input, styles.multiline]} multiline placeholderTextColor={colors.textSecondary} />
-
-      <Text style={styles.label}>Plano de Saude</Text>
-      <TextInput value={form.planoSaude} onChangeText={(v) => updateField('planoSaude', v)} style={styles.input} placeholderTextColor={colors.textSecondary} />
-
-      <Text style={styles.label}>Deficiencias</Text>
-      <TextInput value={form.deficiencias} onChangeText={(v) => updateField('deficiencias', v)} style={[styles.input, styles.multiline]} multiline placeholderTextColor={colors.textSecondary} />
-
-      <Text style={styles.label}>Observacoes</Text>
-      <TextInput value={form.observacoes} onChangeText={(v) => updateField('observacoes', v)} style={[styles.input, styles.multiline]} multiline placeholderTextColor={colors.textSecondary} />
-
-      {/* Status (edit only) */}
       {isEdit && (
         <View style={styles.switchSection}>
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Inativo</Text>
-            <Switch
-              value={form.inativo}
-              onValueChange={(v) => updateField('inativo', v)}
-              trackColor={{ true: colors.primary }}
-            />
-          </View>
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Falecido</Text>
-            <Switch
-              value={form.falecido}
-              onValueChange={(v) => updateField('falecido', v)}
-              trackColor={{ true: colors.danger }}
-            />
-          </View>
+          {[
+            { key: 'inativo', label: 'Inativo', color: c.primary },
+            { key: 'falecido', label: 'Falecido', color: c.danger },
+          ].map(({ key, label, color }) => (
+            <View key={key} style={styles.switchRow}>
+              <Text style={[styles.switchLabel, { color: c.textPrimary, fontSize: scale(14) }]}>{label}</Text>
+              <Switch value={form[key]} onValueChange={(v) => updateField(key, v)} trackColor={{ true: color }} />
+            </View>
+          ))}
         </View>
       )}
 
-      {/* Save */}
-      <Pressable
-        style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]}
-        onPress={handleSave}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.saveBtnText}>{isEdit ? 'Salvar Alteracoes' : 'Cadastrar'}</Text>
-        )}
+      <Pressable style={({ pressed }) => [styles.saveBtn, { backgroundColor: c.primary }, pressed && { opacity: 0.8 }]} onPress={handleSave} disabled={saving}>
+        {saving ? <ActivityIndicator color="#fff" /> : <Text style={[styles.saveBtnText, { fontSize: scale(16) }]}>{isEdit ? 'Salvar Alterações' : 'Cadastrar'}</Text>}
       </Pressable>
+
+      {isEdit && (
+        <Pressable
+          style={({ pressed }) => [styles.deleteBtn, { borderColor: c.danger }, pressed && { opacity: 0.7 }]}
+          onPress={confirmarExcluir}
+        >
+          <Feather name="trash-2" size={16} color={c.danger} />
+          <Text style={[styles.deleteBtnText, { color: c.danger, fontSize: scale(14) }]}>Excluir Idoso</Text>
+        </Pressable>
+      )}
     </ScrollView>
+    <Toast visible={toast.visible} message={toast.message} type={toast.type}
+      onHide={() => setToast(t => ({ ...t, visible: false }))} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
+  container: { flex: 1 },
   content: { padding: 16, paddingBottom: 40 },
   photoContainer: { alignItems: 'center', marginBottom: 16 },
   photo: { width: 80, height: 80, borderRadius: 40 },
-  photoPlaceholder: { backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  photoLabel: { marginTop: 6, fontSize: 12, color: colors.textSecondary },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.primary, marginBottom: 10 },
-  label: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, marginBottom: 4, marginTop: 10 },
-  input: {
-    backgroundColor: colors.white, borderRadius: 10, paddingHorizontal: 12,
-    paddingVertical: 10, borderWidth: 1, borderColor: colors.border,
-    fontSize: 14, color: colors.textPrimary,
-  },
-  multiline: { minHeight: 60, textAlignVertical: 'top' },
+  photoPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  photoLabel: { marginTop: 6, fontSize: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', marginBottom: 10 },
+  label: { fontSize: 13, fontWeight: '700', marginBottom: 4, marginTop: 10 },
   row: { flexDirection: 'row' },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: {
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18,
-    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceLight,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 12, color: colors.textPrimary },
-  chipTextActive: { color: colors.white, fontWeight: '700' },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18, borderWidth: 1 },
+  chipText: { fontSize: 12 },
   switchSection: { marginTop: 20 },
-  switchRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingVertical: 8,
-  },
-  switchLabel: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
-  saveBtn: {
-    marginTop: 24, backgroundColor: colors.primary,
-    paddingVertical: 16, borderRadius: 10, alignItems: 'center',
-  },
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
+  switchLabel: { fontSize: 14, fontWeight: '600' },
+  saveBtn: { marginTop: 24, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  deleteBtn: {
+    marginTop: 12, paddingVertical: 14, borderRadius: 12,
+    alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8,
+    borderWidth: 1.5,
+  },
+  deleteBtnText: { fontWeight: '700', fontSize: 14 },
 });

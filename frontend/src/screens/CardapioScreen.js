@@ -56,6 +56,7 @@ export default function CardapioScreen() {
       <ScreenHeader title="Cardapio" />
       <ScrollView
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}
       >
         {DIAS.map((dia) => {

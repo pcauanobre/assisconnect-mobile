@@ -36,14 +36,13 @@ export default function MainTabs() {
             <Feather name={TAB_ICONS[route.name]} size={22} color={color} />
           ),
           tabBarShowIcon: true,
-          tabBarActiveTintColor: activeColors.accent,
-          tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
-          tabBarIndicatorStyle: { backgroundColor: activeColors.accent, height: 3, borderRadius: 2 },
+          tabBarActiveTintColor: '#fff',
+          tabBarInactiveTintColor: 'rgba(255,255,255,0.55)',
+          tabBarIndicatorStyle: { backgroundColor: '#fff', height: 3, borderRadius: 2 },
           tabBarStyle: {
             backgroundColor: activeColors.primary,
             paddingBottom: bottomPadding,
             paddingTop: 4,
-            elevation: 8,
           },
           tabBarLabelStyle: {
             fontSize: 10,

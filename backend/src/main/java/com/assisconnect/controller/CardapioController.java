@@ -34,4 +34,9 @@ public class CardapioController {
     public Map<String, Cardapio> buscarCardapioDeHoje() {
         return cardapioService.buscarCardapioDeHoje();
     }
+
+    @DeleteMapping("/{id}")
+    public void deletar(@PathVariable Long id) {
+        cardapioService.deletar(id);
+    }
 }

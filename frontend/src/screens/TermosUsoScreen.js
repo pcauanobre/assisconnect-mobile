@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import colors from '../theme/colors';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 export const TERMOS_KEY = '@assisconnect_termos_aceitos';
 
@@ -43,6 +43,7 @@ Em caso de dúvidas, entre em contato com o administrador do sistema da sua inst
 `.trim();
 
 export default function TermosUsoScreen({ onAceitar }) {
+  const { activeColors: c, scale } = useAccessibility();
   const [aceitando, setAceitando] = useState(false);
   const [scrollado, setScrollado] = useState(false);
 
@@ -63,33 +64,34 @@ export default function TermosUsoScreen({ onAceitar }) {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Feather name="file-text" size={28} color={colors.white} />
-        <Text style={styles.headerTitle}>Termos de Uso</Text>
-        <Text style={styles.headerSub}>Leia antes de continuar</Text>
+    <View style={[styles.container, { backgroundColor: c.surface }]}>
+      <View style={[styles.header, { backgroundColor: c.primary }]}>
+        <Feather name="file-text" size={28} color="#fff" />
+        <Text style={[styles.headerTitle, { fontSize: scale(22) }]}>Termos de Uso</Text>
+        <Text style={[styles.headerSub, { fontSize: scale(13) }]}>Leia antes de continuar</Text>
       </View>
 
       <ScrollView
+        showsVerticalScrollIndicator={false}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        <Text style={styles.termos}>{TERMOS_TEXTO}</Text>
+        <Text style={[styles.termos, { color: c.textPrimary, fontSize: scale(14) }]}>{TERMOS_TEXTO}</Text>
         {!scrollado && (
           <View style={styles.scrollHint}>
-            <Feather name="chevrons-down" size={16} color={colors.textSecondary} />
-            <Text style={styles.scrollHintText}>Role até o fim para habilitar o aceite</Text>
+            <Feather name="chevrons-down" size={16} color={c.textSecondary} />
+            <Text style={[styles.scrollHintText, { color: c.textSecondary, fontSize: scale(12) }]}>Role até o fim para habilitar o aceite</Text>
           </View>
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: c.white, borderTopColor: c.border }]}>
         <Pressable
           style={[
             styles.btnAceitar,
-            !scrollado && styles.btnDesabilitado,
+            { backgroundColor: scrollado ? c.primary : c.inactive },
           ]}
           onPress={handleAceitar}
           disabled={!scrollado || aceitando}
@@ -99,11 +101,11 @@ export default function TermosUsoScreen({ onAceitar }) {
           ) : (
             <>
               <Feather name="check-circle" size={18} color="#fff" />
-              <Text style={styles.btnAceitarText}>Li e aceito os Termos de Uso</Text>
+              <Text style={[styles.btnAceitarText, { fontSize: scale(15) }]}>Li e aceito os Termos de Uso</Text>
             </>
           )}
         </Pressable>
-        <Text style={styles.footerNote}>
+        <Text style={[styles.footerNote, { color: c.textSecondary, fontSize: scale(11) }]}>
           Ao aceitar, você confirma que leu e compreendeu os termos acima.
         </Text>
       </View>
@@ -112,39 +114,32 @@ export default function TermosUsoScreen({ onAceitar }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
+  container: { flex: 1 },
   header: {
-    backgroundColor: colors.primary,
     paddingTop: 52,
     paddingBottom: 20,
     paddingHorizontal: 20,
     alignItems: 'center',
     gap: 6,
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: colors.white },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)' },
+  headerTitle: { fontWeight: '800', color: '#fff' },
+  headerSub: { color: 'rgba(255,255,255,0.75)' },
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 10 },
-  termos: {
-    fontSize: 14, color: colors.textPrimary, lineHeight: 22,
-  },
+  termos: { lineHeight: 22 },
   scrollHint: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 6, marginTop: 20, paddingVertical: 10,
   },
-  scrollHintText: { fontSize: 12, color: colors.textSecondary, fontStyle: 'italic' },
+  scrollHintText: { fontStyle: 'italic' },
   footer: {
     padding: 16, paddingBottom: 30,
-    backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border,
+    borderTopWidth: 1,
   },
   btnAceitar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, backgroundColor: colors.primary,
-    paddingVertical: 15, borderRadius: 12,
+    gap: 8, paddingVertical: 15, borderRadius: 12,
   },
-  btnDesabilitado: { backgroundColor: colors.inactive },
-  btnAceitarText: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  footerNote: {
-    fontSize: 11, color: colors.textSecondary, textAlign: 'center', marginTop: 8,
-  },
+  btnAceitarText: { color: '#fff', fontWeight: '800' },
+  footerNote: { textAlign: 'center', marginTop: 8 },
 });

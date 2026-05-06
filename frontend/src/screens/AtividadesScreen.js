@@ -1,16 +1,37 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, Alert, RefreshControl,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable,
+  TextInput, Alert, RefreshControl,
 } from 'react-native';
+import BottomSheet from '../components/BottomSheet';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { getAtividades, saveAtividade } from '../services/atividadeService';
+import { getAtividades, saveAtividade, deleteAtividade } from '../services/atividadeService';
 import ScreenHeader from '../components/ScreenHeader';
 import LoadingOverlay from '../components/LoadingOverlay';
+import DateInput from '../components/DateInput';
+import MonthYearPicker from '../components/MonthYearPicker';
+import Toast from '../components/Toast';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 import colors from '../theme/colors';
 
 export default function AtividadesScreen({ navigation }) {
+  const { activeColors: c, scale } = useAccessibility();
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const showToast = (m, t = 'info') => setToast({ visible: true, message: m, type: t });
+
+  function confirmarExcluirAtiv(ativ) {
+    Alert.alert('Excluir atividade', `Excluir "${ativ.nome}" de ${ativ.dataRegistro}?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Excluir', style: 'destructive', onPress: async () => {
+        try {
+          await deleteAtividade(ativ.id);
+          showToast('Atividade removida.', 'success');
+          await carregar();
+        } catch { showToast('Falha ao excluir atividade.', 'error'); }
+      }},
+    ]);
+  }
   const hoje = new Date();
   const [mes, setMes] = useState(hoje.getMonth() + 1);
   const [ano, setAno] = useState(hoje.getFullYear());
@@ -90,141 +111,150 @@ export default function AtividadesScreen({ navigation }) {
     return dateB.localeCompare(dateA);
   });
 
-  const MESES = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-  ];
-
   if (loading) return <LoadingOverlay />;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+    <View style={{ flex: 1, backgroundColor: c.surface }}>
       <ScreenHeader title="Atividades" onBack={() => navigation.goBack()} />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 80 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <View style={styles.monthNav}>
+        <View style={[styles.monthNav, { backgroundColor: c.white }]}>
           <TouchableOpacity onPress={() => mudarMes(-1)} style={styles.arrow}>
-            <Feather name="chevron-left" size={22} color={colors.primary} />
+            <Feather name="chevron-left" size={22} color={c.primary} />
           </TouchableOpacity>
-          <Text style={styles.monthTitle}>{MESES[mes - 1]} de {ano}</Text>
+          <MonthYearPicker
+            mes={mes}
+            ano={ano}
+            onChange={(m, a) => { setMes(m); setAno(a); }}
+            colors={c}
+          />
           <TouchableOpacity onPress={() => mudarMes(1)} style={styles.arrow}>
-            <Feather name="chevron-right" size={22} color={colors.primary} />
+            <Feather name="chevron-right" size={22} color={c.primary} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Feather name="calendar" size={18} color={colors.primary} />
-            <Text style={styles.statValue}>{atividadesMes.length}</Text>
-            <Text style={styles.statLabel}>Atividades</Text>
+          <View style={[styles.statCard, { backgroundColor: c.white }]}>
+            <Feather name="calendar" size={18} color={c.primary} />
+            <Text style={[styles.statValue, { color: c.textPrimary, fontSize: scale(20) }]}>{atividadesMes.length}</Text>
+            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Atividades</Text>
           </View>
-          <View style={styles.statCard}>
-            <Feather name="users" size={18} color={colors.primary} />
-            <Text style={styles.statValue}>
+          <View style={[styles.statCard, { backgroundColor: c.white }]}>
+            <Feather name="users" size={18} color={c.primary} />
+            <Text style={[styles.statValue, { color: c.textPrimary, fontSize: scale(20) }]}>
               {atividadesMes.reduce((acc, a) => acc + (a.presentes || []).length, 0)}
             </Text>
-            <Text style={styles.statLabel}>Presenças</Text>
+            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Presenças</Text>
           </View>
-          <View style={styles.statCard}>
-            <Feather name="star" size={18} color={colors.primary} />
-            <Text style={styles.statValue}>{Object.keys(ranking).length}</Text>
-            <Text style={styles.statLabel}>Tipos</Text>
+          <View style={[styles.statCard, { backgroundColor: c.white }]}>
+            <Feather name="star" size={18} color={c.primary} />
+            <Text style={[styles.statValue, { color: c.textPrimary, fontSize: scale(20) }]}>{Object.keys(ranking).length}</Text>
+            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Tipos</Text>
           </View>
         </View>
 
         {rankingList.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Top 5 mais frequentadas</Text>
+          <View style={[styles.section, { backgroundColor: c.white }]}>
+            <Text style={[styles.sectionTitle, { color: c.primary, fontSize: scale(15) }]}>Top 5 mais frequentadas</Text>
             {rankingList.map((r, i) => (
-              <View key={r.nome} style={styles.rankingRow}>
-                <View style={styles.rankingPos}>
-                  <Text style={styles.rankingPosText}>{i + 1}</Text>
+              <View key={r.nome} style={[styles.rankingRow, { borderBottomColor: c.surface }]}>
+                <View style={[styles.rankingPos, { backgroundColor: c.primary }]}>
+                  <Text style={[styles.rankingPosText, { fontSize: scale(13) }]}>{i + 1}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.rankingNome}>{r.nome}</Text>
-                  <Text style={styles.rankingSub}>
+                  <Text style={[styles.rankingNome, { color: c.textPrimary, fontSize: scale(14) }]}>{r.nome}</Text>
+                  <Text style={[styles.rankingSub, { color: c.textSecondary, fontSize: scale(11) }]}>
                     {r.qtd} evento(s) — {r.totalPresentes} presença(s)
                   </Text>
                 </View>
-                <Feather name="trending-up" size={16} color={colors.success} />
+                <Feather name="trending-up" size={16} color={c.success} />
               </View>
             ))}
           </View>
         )}
 
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: c.white }]}>
           <Text style={styles.sectionTitle}>Todas as atividades</Text>
           {atividadesOrdenadas.length === 0 ? (
-            <Text style={styles.emptyText}>Nenhuma atividade neste mês</Text>
+            <Text style={[styles.emptyText, { color: c.textSecondary }]}>Nenhuma atividade neste mês</Text>
           ) : (
             atividadesOrdenadas.map((a) => (
-              <View key={a.id} style={styles.atividadeCard}>
-                <View style={styles.atividadeLeft}>
-                  <Feather name="activity" size={16} color={colors.primary} />
+              <View key={a.id} style={[styles.atividadeCard, { borderBottomColor: c.surface }]}>
+                <View style={[styles.atividadeLeft, { backgroundColor: c.accent }]}>
+                  <Feather name="activity" size={16} color={c.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.atividadeNome}>{a.nome}</Text>
+                  <Text style={[styles.atividadeNome, { color: c.textPrimary, fontSize: scale(14) }]}>{a.nome}</Text>
                   <View style={styles.atividadeInfoRow}>
-                    <Feather name="calendar" size={10} color={colors.textSecondary} />
-                    <Text style={styles.atividadeInfo}>{a.dataRegistro}</Text>
+                    <Feather name="calendar" size={10} color={c.textSecondary} />
+                    <Text style={[styles.atividadeInfo, { color: c.textSecondary }]}>{a.dataRegistro}</Text>
                     {a.horaRegistro && (
                       <>
-                        <Feather name="clock" size={10} color={colors.textSecondary} />
-                        <Text style={styles.atividadeInfo}>{a.horaRegistro}</Text>
+                        <Feather name="clock" size={10} color={c.textSecondary} />
+                        <Text style={[styles.atividadeInfo, { color: c.textSecondary }]}>{a.horaRegistro}</Text>
                       </>
                     )}
                   </View>
                 </View>
                 <View style={styles.presentesBadge}>
-                  <Feather name="user-check" size={11} color={colors.white} />
-                  <Text style={styles.presentesText}>{(a.presentes || []).length}</Text>
+                  <Feather name="user-check" size={11} color="#fff" />
+                  <Text style={[styles.presentesText, { fontSize: scale(11) }]}>{(a.presentes || []).length}</Text>
                 </View>
+                <TouchableOpacity onPress={() => confirmarExcluirAtiv(a)} style={styles.deleteIconBtn} hitSlop={6}>
+                  <Feather name="trash-2" size={15} color={c.danger} />
+                </TouchableOpacity>
               </View>
             ))
           )}
         </View>
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-        <Feather name="plus" size={26} color={colors.white} />
-      </TouchableOpacity>
+      <Pressable style={[styles.fab, { backgroundColor: colors.primary }]} onPress={() => setModalVisible(true)}>
+        <Feather name="plus" size={24} color={colors.white} />
+      </Pressable>
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalBg}>
+      <BottomSheet visible={modalVisible} onClose={() => setModalVisible(false)}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Nova Atividade</Text>
-            <Text style={styles.label}>Nome</Text>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: c.primary, fontSize: scale(17) }]}>Nova Atividade</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={10}>
+                <Feather name="x" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalBody}>
+            <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Nome</Text>
             <TextInput
-              style={styles.input} value={form.nome}
+              style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary, fontSize: scale(14) }]} value={form.nome}
+              placeholderTextColor={c.textSecondary}
               onChangeText={(v) => setForm({ ...form, nome: v })}
               placeholder="Ex: Ginastica Laboral"
             />
-            <Text style={styles.label}>Data</Text>
+            <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Data</Text>
+            <DateInput value={form.dataRegistro} onChange={(v) => setForm({ ...form, dataRegistro: v })} />
+            <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Hora</Text>
             <TextInput
-              style={styles.input} value={form.dataRegistro}
-              onChangeText={(v) => setForm({ ...form, dataRegistro: v })}
-              placeholder="AAAA-MM-DD"
-            />
-            <Text style={styles.label}>Hora</Text>
-            <TextInput
-              style={styles.input} value={form.horaRegistro}
+              style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary, fontSize: scale(14) }]} value={form.horaRegistro}
+              placeholderTextColor={c.textSecondary}
               onChangeText={(v) => setForm({ ...form, horaRegistro: v })}
               placeholder="HH:MM"
             />
-            <View style={styles.modalActions}>
+            </View>
+            <View style={[styles.modalActions, { borderTopColor: colors.border }]}>
               <TouchableOpacity style={[styles.modalBtn, styles.btnCancel]} onPress={() => setModalVisible(false)}>
-                <Text style={styles.modalBtnTxt}>Cancelar</Text>
+                <Text style={[styles.modalBtnTxt, { fontSize: scale(14) }]}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.modalBtn, styles.btnSave]} onPress={criarAtividade}>
-                <Text style={[styles.modalBtnTxt, { color: colors.white }]}>Criar</Text>
+                <Text style={[styles.modalBtnTxt, { color: '#fff', fontSize: scale(14) }]}>Criar</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
+      </BottomSheet>
+      <Toast visible={toast.visible} message={toast.message} type={toast.type}
+        onHide={() => setToast(t => ({ ...t, visible: false }))} />
     </View>
   );
 }
@@ -271,27 +301,36 @@ const styles = StyleSheet.create({
   atividadeNome: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   atividadeInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   atividadeInfo: { fontSize: 11, color: colors.textSecondary },
+  deleteIconBtn: { padding: 6 },
   presentesBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10,
   },
   presentesText: { color: colors.white, fontSize: 11, fontWeight: '700' },
   fab: {
-    position: 'absolute', right: 20, bottom: 20, width: 56, height: 56, borderRadius: 28,
-    backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', elevation: 4,
+    position: 'absolute', bottom: 20, right: 20,
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center',
+    elevation: 5,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
   },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalCard: {
-    backgroundColor: colors.surfaceLight, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 20,
+  modalCard: { backgroundColor: colors.white, borderRadius: 20 },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1,
   },
-  modalTitle: { fontSize: 17, fontWeight: '800', color: colors.primary, marginBottom: 10 },
+  modalBody: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: colors.primary },
   label: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginTop: 8, marginBottom: 4 },
   input: {
-    backgroundColor: colors.white, borderRadius: 8, padding: 10,
+    backgroundColor: colors.surface, borderRadius: 10, padding: 11,
     borderWidth: 1, borderColor: colors.border, fontSize: 14,
   },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  modalActions: {
+    flexDirection: 'row', gap: 10,
+    paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1,
+  },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   btnCancel: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
   btnSave: { backgroundColor: colors.primary },

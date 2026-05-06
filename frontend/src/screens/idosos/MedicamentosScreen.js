@@ -1,30 +1,30 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Modal,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable,
   TextInput, Alert, ScrollView, Switch,
 } from 'react-native';
+import BottomSheet from '../../components/BottomSheet';
+import Toast from '../../components/Toast';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  getMedicamentosByIdoso, createMedicamento,
-  updateMedicamento, deleteMedicamento,
+  getMedicamentosByIdoso, createMedicamento, updateMedicamento, deleteMedicamento,
 } from '../../services/medicamentoService';
 import LoadingOverlay from '../../components/LoadingOverlay';
-import colors from '../../theme/colors';
+import { useAccessibility } from '../../contexts/AccessibilityContext';
 
-const FREQUENCIAS = ['Diario', '12/12h', '8/8h', '6/6h', 'Semanal', 'Quando necessario'];
+const FREQUENCIAS = ['Diário', '12/12h', '8/8h', '6/6h', 'Semanal', 'Quando necessário'];
 
 export default function MedicamentosScreen({ route }) {
   const { idosoId, idosoNome } = route.params;
+  const { activeColors: c, scale } = useAccessibility();
   const [medicamentos, setMedicamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [editando, setEditando] = useState(null);
-
-  const [form, setForm] = useState({
-    nome: '', dosagem: '', horarios: '', frequencia: 'Diario',
-    observacoes: '', ativo: true,
-  });
+  const [form, setForm] = useState({ nome: '', dosagem: '', horarios: '', frequencia: 'Diário', observacoes: '', ativo: true });
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
@@ -33,119 +33,95 @@ export default function MedicamentosScreen({ route }) {
       setLoading(true);
       const res = await getMedicamentosByIdoso(idosoId);
       setMedicamentos(res.data);
-    } catch (e) {
-      console.log('[MED] Erro:', e);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.log('[MED] Erro:', e); }
+    finally { setLoading(false); }
   }
 
   function abrirNovo() {
     setEditando(null);
-    setForm({ nome: '', dosagem: '', horarios: '', frequencia: 'Diario', observacoes: '', ativo: true });
+    setForm({ nome: '', dosagem: '', horarios: '', frequencia: 'Diário', observacoes: '', ativo: true });
     setModalVisible(true);
   }
 
   function abrirEditar(med) {
     setEditando(med);
-    setForm({
-      nome: med.nome || '',
-      dosagem: med.dosagem || '',
-      horarios: med.horarios || '',
-      frequencia: med.frequencia || 'Diario',
-      observacoes: med.observacoes || '',
-      ativo: med.ativo,
-    });
+    setForm({ nome: med.nome || '', dosagem: med.dosagem || '', horarios: med.horarios || '',
+      frequencia: med.frequencia || 'Diário', observacoes: med.observacoes || '', ativo: med.ativo });
     setModalVisible(true);
   }
 
   async function salvar() {
-    if (!form.nome.trim()) {
-      Alert.alert('Atencao', 'Informe o nome do medicamento.');
-      return;
-    }
+    if (!form.nome.trim()) { showToast('Informe o nome do medicamento.', 'warn'); return; }
     try {
       const payload = { ...form, idosoId };
-      if (editando) {
-        await updateMedicamento(editando.id, payload);
-      } else {
-        await createMedicamento(payload);
-      }
+      if (editando) await updateMedicamento(editando.id, payload);
+      else await createMedicamento(payload);
       setModalVisible(false);
+      showToast(editando ? 'Medicamento atualizado!' : 'Medicamento cadastrado!', 'success');
       await load();
-    } catch (e) {
-      Alert.alert('Erro', 'Nao foi possivel salvar o medicamento.');
-    }
+    } catch { showToast('Não foi possível salvar o medicamento.', 'error'); }
   }
 
   function confirmarExcluir(med) {
-    Alert.alert(
-      'Excluir medicamento',
-      `Deseja excluir "${med.nome}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir', style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteMedicamento(med.id);
-              await load();
-            } catch { Alert.alert('Erro', 'Falha ao excluir.'); }
-          },
-        },
-      ],
-    );
+    Alert.alert('Excluir medicamento', `Deseja excluir "${med.nome}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Excluir', style: 'destructive', onPress: async () => {
+        try { await deleteMedicamento(med.id); showToast('Medicamento removido.', 'success'); await load(); }
+        catch { showToast('Falha ao excluir.', 'error'); }
+      }},
+    ]);
   }
 
   if (loading) return <LoadingOverlay />;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.subtitle}>{idosoNome || 'Idoso'}</Text>
-        <Text style={styles.counter}>{medicamentos.length} medicamento(s)</Text>
+    <View style={[styles.container, { backgroundColor: c.surface }]}>
+      <View style={[styles.header, { backgroundColor: c.white, borderBottomColor: c.border }]}>
+        <Text style={[styles.subtitle, { color: c.textPrimary }]}>{idosoNome || 'Idoso'}</Text>
+        <Text style={[styles.counter, { color: c.textSecondary }]}>{medicamentos.length} medicamento(s)</Text>
       </View>
 
       <FlatList
         data={medicamentos}
         keyExtractor={(m) => String(m.id)}
         contentContainerStyle={{ padding: 12, paddingBottom: 80 }}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Feather name="package" size={48} color={colors.textSecondary} />
-            <Text style={styles.emptyText}>Nenhum medicamento cadastrado</Text>
+            <Feather name="package" size={48} color={c.border} />
+            <Text style={[styles.emptyText, { color: c.textSecondary }]}>Nenhum medicamento cadastrado</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View style={[styles.card, !item.ativo && styles.cardInativo]}>
+          <View style={[styles.card, { backgroundColor: c.white }, !item.ativo && styles.cardInativo]}>
             <View style={styles.cardHeader}>
-              <View style={styles.iconCircle}>
-                <Feather name="activity" size={18} color={colors.primary} />
+              <View style={[styles.iconCircle, { backgroundColor: c.accent }]}>
+                <Feather name="activity" size={18} color={c.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.medNome}>{item.nome}</Text>
-                <Text style={styles.medSub}>{item.dosagem} — {item.frequencia}</Text>
+                <Text style={[styles.medNome, { color: c.textPrimary }]}>{item.nome}</Text>
+                <Text style={[styles.medSub, { color: c.textSecondary }]}>{item.dosagem} — {item.frequencia}</Text>
               </View>
               {!item.ativo && (
-                <View style={styles.badgeInativo}>
+                <View style={[styles.badgeInativo, { backgroundColor: c.inactive }]}>
                   <Text style={styles.badgeTxt}>Suspenso</Text>
                 </View>
               )}
             </View>
             {!!item.horarios && (
               <View style={styles.timeRow}>
-                <Feather name="clock" size={13} color={colors.textSecondary} />
-                <Text style={styles.timeText}>{item.horarios}</Text>
+                <Feather name="clock" size={13} color={c.textSecondary} />
+                <Text style={[styles.timeText, { color: c.textSecondary }]}>{item.horarios}</Text>
               </View>
             )}
-            {!!item.observacoes && <Text style={styles.obs}>{item.observacoes}</Text>}
+            {!!item.observacoes && <Text style={[styles.obs, { color: c.textSecondary }]}>{item.observacoes}</Text>}
             <View style={styles.actions}>
-              <TouchableOpacity style={[styles.btn, styles.btnEdit]} onPress={() => abrirEditar(item)}>
-                <Feather name="edit-2" size={14} color={colors.white} />
+              <TouchableOpacity style={[styles.btn, { backgroundColor: c.primary }]} onPress={() => abrirEditar(item)}>
+                <Feather name="edit-2" size={14} color="#fff" />
                 <Text style={styles.btnTxt}>Editar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.btn, styles.btnDel]} onPress={() => confirmarExcluir(item)}>
-                <Feather name="trash-2" size={14} color={colors.white} />
+              <TouchableOpacity style={[styles.btn, { backgroundColor: c.danger }]} onPress={() => confirmarExcluir(item)}>
+                <Feather name="trash-2" size={14} color="#fff" />
                 <Text style={styles.btnTxt}>Excluir</Text>
               </TouchableOpacity>
             </View>
@@ -153,152 +129,113 @@ export default function MedicamentosScreen({ route }) {
         )}
       />
 
-      <TouchableOpacity style={styles.fab} onPress={abrirNovo}>
-        <Feather name="plus" size={26} color={colors.white} />
-      </TouchableOpacity>
+      <Pressable style={[styles.fab, { backgroundColor: c.primary }]} onPress={abrirNovo}>
+        <Feather name="plus" size={24} color="#fff" />
+      </Pressable>
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalBg}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
-              {editando ? 'Editar Medicamento' : 'Novo Medicamento'}
-            </Text>
-            <ScrollView style={{ maxHeight: 480 }}>
-              <Text style={styles.label}>Nome *</Text>
-              <TextInput
-                style={styles.input}
-                value={form.nome}
-                onChangeText={(v) => setForm({ ...form, nome: v })}
-                placeholder="Ex: Losartana"
-              />
-
-              <Text style={styles.label}>Dosagem</Text>
-              <TextInput
-                style={styles.input}
-                value={form.dosagem}
-                onChangeText={(v) => setForm({ ...form, dosagem: v })}
-                placeholder="Ex: 50mg"
-              />
-
-              <Text style={styles.label}>Horarios (separados por virgula)</Text>
-              <TextInput
-                style={styles.input}
-                value={form.horarios}
-                onChangeText={(v) => setForm({ ...form, horarios: v })}
-                placeholder="Ex: 08:00, 20:00"
-              />
-
-              <Text style={styles.label}>Frequencia</Text>
+      <BottomSheet visible={modalVisible} onClose={() => setModalVisible(false)}>
+          <View style={[styles.modalCard, { backgroundColor: c.white }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: c.border }]}>
+              <Text style={[styles.modalTitle, { color: c.textPrimary, fontSize: scale(17) }]}>
+                {editando ? 'Editar Medicamento' : 'Novo Medicamento'}
+              </Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={10}>
+                <Feather name="x" size={20} color={c.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Nome *</Text>
+              <TextInput style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary }]}
+                value={form.nome} onChangeText={(v) => setForm({ ...form, nome: v })} placeholder="Ex: Losartana" placeholderTextColor={c.textSecondary} />
+              <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Dosagem</Text>
+              <TextInput style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary }]}
+                value={form.dosagem} onChangeText={(v) => setForm({ ...form, dosagem: v })} placeholder="Ex: 50mg" placeholderTextColor={c.textSecondary} />
+              <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Horários (separados por vírgula)</Text>
+              <TextInput style={[styles.input, { backgroundColor: c.white, borderColor: c.border, color: c.textPrimary }]}
+                value={form.horarios} onChangeText={(v) => setForm({ ...form, horarios: v })} placeholder="Ex: 08:00, 20:00" placeholderTextColor={c.textSecondary} />
+              <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Frequência</Text>
               <View style={styles.chipsRow}>
                 {FREQUENCIAS.map((f) => (
-                  <TouchableOpacity
-                    key={f}
-                    style={[styles.chip, form.frequencia === f && styles.chipActive]}
-                    onPress={() => setForm({ ...form, frequencia: f })}
-                  >
-                    <Text style={[styles.chipTxt, form.frequencia === f && styles.chipTxtActive]}>{f}</Text>
+                  <TouchableOpacity key={f}
+                    style={[styles.chip, { backgroundColor: c.white, borderColor: c.border }, form.frequencia === f && { backgroundColor: c.primary, borderColor: c.primary }]}
+                    onPress={() => setForm({ ...form, frequencia: f })}>
+                    <Text style={[styles.chipTxt, { color: c.textPrimary }, form.frequencia === f && { color: '#fff', fontWeight: '700' }]}>{f}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
-
-              <Text style={styles.label}>Observacoes</Text>
-              <TextInput
-                style={[styles.input, { height: 70, textAlignVertical: 'top' }]}
-                value={form.observacoes}
-                onChangeText={(v) => setForm({ ...form, observacoes: v })}
-                placeholder="Observacoes adicionais"
-                multiline
-              />
-
+              <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Observações</Text>
+              <TextInput style={[styles.input, { height: 70, textAlignVertical: 'top', backgroundColor: c.white, borderColor: c.border, color: c.textPrimary }]}
+                value={form.observacoes} onChangeText={(v) => setForm({ ...form, observacoes: v })} placeholder="Observações adicionais" multiline placeholderTextColor={c.textSecondary} />
               {editando && (
                 <View style={styles.switchRow}>
-                  <Text style={styles.label}>Medicamento ativo</Text>
-                  <Switch
-                    value={form.ativo}
-                    onValueChange={(v) => setForm({ ...form, ativo: v })}
-                    trackColor={{ false: '#ccc', true: colors.success }}
-                  />
+                  <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Medicamento ativo</Text>
+                  <Switch value={form.ativo} onValueChange={(v) => setForm({ ...form, ativo: v })} trackColor={{ false: '#ccc', true: c.success }} />
                 </View>
               )}
             </ScrollView>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.modalBtn, styles.btnCancel]} onPress={() => setModalVisible(false)}>
-                <Text style={styles.modalBtnTxt}>Cancelar</Text>
+            <View style={[styles.modalActions, { borderTopColor: c.border }]}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }]} onPress={() => setModalVisible(false)}>
+                <Text style={[styles.modalBtnTxt, { color: c.textPrimary, fontSize: scale(14) }]}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.btnSave]} onPress={salvar}>
-                <Text style={[styles.modalBtnTxt, { color: colors.white }]}>Salvar</Text>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: c.primary }]} onPress={salvar}>
+                <Text style={[styles.modalBtnTxt, { color: '#fff', fontSize: scale(14) }]}>Salvar</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
+      </BottomSheet>
+      <Toast visible={toast.visible} message={toast.message} type={toast.type}
+        onHide={() => setToast(t => ({ ...t, visible: false }))} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  header: {
-    backgroundColor: colors.white, padding: 14, borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  subtitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  counter: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  container: { flex: 1 },
+  header: { padding: 14, borderBottomWidth: 1 },
+  subtitle: { fontSize: 15, fontWeight: '700' },
+  counter: { fontSize: 12, marginTop: 2 },
   empty: { alignItems: 'center', paddingTop: 60 },
-  emptyText: { color: colors.textSecondary, marginTop: 10 },
-  card: {
-    backgroundColor: colors.white, borderRadius: 12, padding: 14, marginBottom: 10, elevation: 1,
-  },
+  emptyText: { marginTop: 10 },
+  card: { borderRadius: 12, padding: 14, marginBottom: 10, elevation: 1 },
   cardInativo: { opacity: 0.55 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconCircle: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: colors.accent,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  medNome: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  medSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  badgeInativo: {
-    backgroundColor: colors.inactive, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
-  },
-  badgeTxt: { color: colors.white, fontSize: 11, fontWeight: '700' },
+  iconCircle: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  medNome: { fontSize: 15, fontWeight: '700' },
+  medSub: { fontSize: 12, marginTop: 2 },
+  badgeInativo: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  badgeTxt: { color: '#fff', fontSize: 11, fontWeight: '700' },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, marginLeft: 48 },
-  timeText: { fontSize: 13, color: colors.textSecondary },
-  obs: { fontSize: 12, color: colors.textSecondary, marginTop: 6, marginLeft: 48, fontStyle: 'italic' },
+  timeText: { fontSize: 13 },
+  obs: { fontSize: 12, marginTop: 6, marginLeft: 48, fontStyle: 'italic' },
   actions: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  btn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 8, borderRadius: 8, gap: 5,
-  },
-  btnEdit: { backgroundColor: '#2563eb' },
-  btnDel: { backgroundColor: colors.danger },
-  btnTxt: { color: colors.white, fontWeight: '700', fontSize: 12 },
+  btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 8, gap: 5 },
+  btnTxt: { color: '#fff', fontWeight: '700', fontSize: 12 },
   fab: {
-    position: 'absolute', right: 20, bottom: 20, width: 56, height: 56, borderRadius: 28,
-    backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', elevation: 4,
+    position: 'absolute', bottom: 20, right: 20,
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center',
+    elevation: 5,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
   },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalCard: {
-    backgroundColor: colors.surfaceLight, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 20, maxHeight: '90%',
+  modalCard: { borderRadius: 20 },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1,
   },
-  modalTitle: { fontSize: 17, fontWeight: '800', color: colors.primary, marginBottom: 10 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginTop: 8, marginBottom: 4 },
-  input: {
-    backgroundColor: colors.white, borderRadius: 8, padding: 10,
-    borderWidth: 1, borderColor: colors.border, fontSize: 14,
-  },
+  modalBody: { paddingHorizontal: 20, paddingTop: 12, maxHeight: 440 },
+  handle: { width: 40, height: 4, backgroundColor: '#ccc', borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
+  modalTitle: { fontSize: 17, fontWeight: '800' },
+  label: { fontSize: 13, fontWeight: '600', marginTop: 8, marginBottom: 4 },
+  input: { borderRadius: 8, padding: 10, borderWidth: 1, fontSize: 14 },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  chip: {
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipTxt: { fontSize: 12, color: colors.textPrimary },
-  chipTxtActive: { color: colors.white, fontWeight: '700' },
+  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1 },
+  chipTxt: { fontSize: 12 },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  btnCancel: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
-  btnSave: { backgroundColor: colors.primary },
-  modalBtnTxt: { fontWeight: '700', color: colors.textPrimary },
+  modalActions: {
+    flexDirection: 'row', gap: 10,
+    paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1,
+  },
+  modalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
+  modalBtnTxt: { fontWeight: '700', fontSize: 14 },
 });

@@ -1,10 +1,25 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import colors from '../theme/colors';
+import { useAccessibility } from '../contexts/AccessibilityContext';
+
+const ICONS = {
+  success: 'check-circle',
+  error:   'x-circle',
+  warn:    'alert-triangle',
+  info:    'bell',
+};
 
 export default function Toast({ visible, message, type = 'info', onHide, duration = 2500 }) {
+  const { activeColors: c, scale } = useAccessibility();
   const opacity = useRef(new Animated.Value(0)).current;
+
+  const COLORS = {
+    success: c.success || '#16a34a',
+    error:   c.danger  || '#dc2626',
+    warn:    '#d97706',
+    info:    c.primary,
+  };
 
   useEffect(() => {
     if (visible) {
@@ -19,30 +34,23 @@ export default function Toast({ visible, message, type = 'info', onHide, duratio
 
   if (!visible) return null;
 
-  const bg = type === 'success' ? colors.success
-    : type === 'error' ? colors.danger
-    : type === 'warn' ? '#d97706'
-    : colors.primary;
-
-  const icon = type === 'success' ? 'check-circle'
-    : type === 'error' ? 'x-circle'
-    : type === 'warn' ? 'alert-triangle'
-    : 'bell';
+  const bg = COLORS[type] || COLORS.info;
+  const icon = ICONS[type] || ICONS.info;
 
   return (
     <Animated.View style={[styles.wrapper, { opacity, backgroundColor: bg }]} pointerEvents="none">
-      <Feather name={icon} size={18} color={colors.white} />
-      <Text style={styles.text}>{message}</Text>
+      <Feather name={icon} size={18} color="#fff" />
+      <Text style={[styles.text, { fontSize: scale(13) }]}>{message}</Text>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: 'absolute', top: 80, left: 20, right: 20, zIndex: 1000,
+    position: 'absolute', top: 80, left: 16, right: 16, zIndex: 1000,
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: 14, borderRadius: 10, elevation: 5,
-    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+    padding: 14, borderRadius: 12, elevation: 6,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
   },
-  text: { color: colors.white, fontWeight: '700', flex: 1, fontSize: 13 },
+  text: { color: '#fff', fontWeight: '700', flex: 1 },
 });

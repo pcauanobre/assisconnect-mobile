@@ -38,4 +38,9 @@ public class AtividadeController {
     public List<Atividade> atividadesDeHoje() {
         return service.buscarAtividadesDeHoje();
     }
+
+    @DeleteMapping("/{id}")
+    public void deletar(@PathVariable Long id) {
+        service.deletar(id);
+    }
 }

@@ -12,7 +12,6 @@ import {
 import ScreenHeader from '../components/ScreenHeader';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { gerarPDFRelatorio } from '../utils/pdfGenerator';
-import { getDadosCompletosRelatorio } from '../services/relatorioExportService';
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
@@ -264,6 +263,7 @@ export default function RelatorioMensalScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}
       >
         {loadingAno ? (
@@ -353,10 +353,9 @@ export default function RelatorioMensalScreen() {
                           style={({ pressed }) => [styles.pdfBtn, pressed && { opacity: 0.8 }]}
                           onPress={async () => {
                             try {
-                              const res = await getDadosCompletosRelatorio(mes, anoSelecionado);
-                              await gerarPDFRelatorio(res.data, mes, anoSelecionado);
+                              await gerarPDFRelatorio({ estatisticas: stats, observacoes }, mes, anoSelecionado);
                             } catch (e) {
-                              Alert.alert('Erro', 'Falha ao obter dados para o PDF.');
+                              Alert.alert('Erro', 'Falha ao gerar PDF.');
                             }
                           }}
                         >

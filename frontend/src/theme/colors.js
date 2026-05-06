@@ -15,22 +15,22 @@ const colors = {
   inactive:      '#9CA3AF',
 };
 
-// Tema escuro — profundidade quente, identidade marrom preservada
+// Tema escuro — padrão Material Design (sem identidade marrom)
 // Hierarquia: background < surface < surfaceLight < white (elevação crescente)
 export const darkColors = {
-  primary:       '#d4845a',  // Cobre quente — legível, identidade preservada
-  primaryDark:   '#b86e44',  // Cobre profundo para variantes pressionadas
-  background:    '#100a06',  // Quase-preto com subtom marrom (telas de auth)
-  surface:       '#1c1108',  // Fundo principal das telas
-  surfaceLight:  '#2a1a0e',  // Modais e áreas elevadas
-  accent:        '#3d2616',  // Superfície sutil para placeholders e chips
-  white:         '#382213',  // Card/painel — claramente acima do surface
-  textPrimary:   '#f0e8df',  // Creme quente — texto principal legível
-  textSecondary: '#9b8070',  // Marrom médio — hierarquia clara
-  border:        '#4a3221',  // Borda sutil mas perceptível
-  danger:        '#f87171',  // Vermelho quente (não neon)
-  success:       '#34d399',  // Esmeralda suave (não neon)
-  inactive:      '#7a6358',  // Neutro quente — sem cinza frio
+  primary:       '#3b82f6',  // Azul material — accent padrão dark
+  primaryDark:   '#2563eb',  // Azul profundo para pressed
+  background:    '#121212',  // Material Design dark base
+  surface:       '#1e1e1e',  // Cards/elevation 1
+  surfaceLight:  '#2a2a2a',  // Cards/elevation 2 (modais)
+  accent:        '#3a3a3a',  // Chip/placeholder bg
+  white:         '#1e1e1e',  // "Card branco" no dark = surface elevado
+  textPrimary:   '#e8e8e8',  // Texto principal — legível
+  textSecondary: '#9e9e9e',  // Texto secundário — hierarquia
+  border:        '#3a3a3a',  // Borda sutil
+  danger:        '#ef4444',  // Vermelho neutro
+  success:       '#22c55e',  // Verde neutro
+  inactive:      '#6b6b6b',  // Cinza neutro
 };
 
 // Alto contraste — tema claro de alta legibilidade, brand-aware

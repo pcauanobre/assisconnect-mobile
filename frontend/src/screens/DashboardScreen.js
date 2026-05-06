@@ -2,22 +2,31 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl, Pressable, Image,
 } from 'react-native';
+import BottomSheet from '../components/BottomSheet';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 import { getIdososCount, getAniversariantesDoMes } from '../services/idosoService';
 import { getCardapioHoje } from '../services/cardapioService';
 import { getAtividades, getAtividadesHoje } from '../services/atividadeService';
 import { getUsuariosCount } from '../services/usuarioService';
 import { getIdososSemVisita } from '../services/visitaService';
-import { testarAgora } from '../services/notificacaoService';
+import { testarAgora, pedirPermissao, isSuportado } from '../services/notificacaoService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StatCard from '../components/StatCard';
 import Toast from '../components/Toast';
-import colors from '../theme/colors';
+
+function saudacao() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
 
 export default function DashboardScreen({ navigation }) {
   const { user, logout } = useAuth();
+  const { activeColors: c, config, scale } = useAccessibility();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ idosos: 0, aniversarios: 0, atividades: 0, colaboradores: 0 });
@@ -26,17 +35,14 @@ export default function DashboardScreen({ navigation }) {
   const [atividadesHoje, setAtividadesHoje] = useState([]);
   const [semVisita, setSemVisita] = useState([]);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
-
-  async function dispararDebug() {
-    const r = await testarAgora('AssisConnect Debug', 'Notificacao de teste disparada!');
-    setToast({
-      visible: true,
-      message: r.sucesso ? 'Notificacao enviada em 2s!' : `Falha: ${r.motivo}`,
-      type: r.sucesso ? 'success' : 'error',
-    });
-  }
+  const [debugModal, setDebugModal] = useState(false);
+  const [debugResult, setDebugResult] = useState('');
   const [diasRegistrados, setDiasRegistrados] = useState(0);
   const [totalDiasMes, setTotalDiasMes] = useState(0);
+
+  const alertWarnBg = config.darkMode ? 'rgba(217,119,6,0.15)' : '#fef3c7';
+  const alertInfoBg = config.darkMode ? 'rgba(37,99,235,0.15)' : '#dbeafe';
+  const alertOkBg   = config.darkMode ? 'rgba(22,163,74,0.15)'  : '#dcfce7';
 
   const loadData = useCallback(async () => {
     try {
@@ -47,22 +53,17 @@ export default function DashboardScreen({ navigation }) {
       const diasNoMes = new Date(ano, mes, 0).getDate();
 
       const [idososRes, anivRes, menuRes, ativRes, usersRes, semVisRes] = await Promise.allSettled([
-        getIdososCount(),
-        getAniversariantesDoMes(),
-        getCardapioHoje(),
-        getAtividadesHoje(),
-        getUsuariosCount(),
-        getIdososSemVisita(30),
+        getIdososCount(), getAniversariantesDoMes(), getCardapioHoje(),
+        getAtividadesHoje(), getUsuariosCount(), getIdososSemVisita(30),
       ]);
 
       const idososCount = idososRes.status === 'fulfilled' ? idososRes.value.data : 0;
-      const anivData = anivRes.status === 'fulfilled' ? anivRes.value.data : [];
-      const menuData = menuRes.status === 'fulfilled' ? menuRes.value.data : null;
-      const ativData = ativRes.status === 'fulfilled' ? ativRes.value.data : [];
-      const usersCount = usersRes.status === 'fulfilled' ? usersRes.value.data : 0;
-      const semVisData = semVisRes.status === 'fulfilled' ? semVisRes.value.data : [];
+      const anivData    = anivRes.status  === 'fulfilled' ? anivRes.value.data  : [];
+      const menuData    = menuRes.status  === 'fulfilled' ? menuRes.value.data  : null;
+      const ativData    = ativRes.status  === 'fulfilled' ? ativRes.value.data  : [];
+      const usersCount  = usersRes.status === 'fulfilled' ? usersRes.value.data : 0;
+      const semVisData  = semVisRes.status === 'fulfilled' ? semVisRes.value.data : [];
 
-      // Calcula dias com registro de atividade no mes atual
       let registrados = 0;
       for (let d = 1; d <= diaAtual; d++) {
         const dataStr = `${ano}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -72,12 +73,7 @@ export default function DashboardScreen({ navigation }) {
         } catch {}
       }
 
-      setStats({
-        idosos: idososCount,
-        aniversarios: anivData.length,
-        atividades: ativData.length,
-        colaboradores: usersCount,
-      });
+      setStats({ idosos: idososCount, aniversarios: anivData.length, atividades: ativData.length, colaboradores: usersCount });
       setMenuHoje(menuData);
       setAniversariantes(anivData);
       setAtividadesHoje(ativData);
@@ -85,15 +81,11 @@ export default function DashboardScreen({ navigation }) {
       setDiasRegistrados(registrados);
       setTotalDiasMes(diasNoMes);
     } catch (e) {
-      console.log('[DASHBOARD] Erro ao carregar dados:', e);
+      console.log('[DASHBOARD] Erro:', e);
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
+  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
   async function onRefresh() {
     setRefreshing(true);
@@ -111,240 +103,309 @@ export default function DashboardScreen({ navigation }) {
     return idade;
   }
 
+  async function testarPush() {
+    setDebugResult('Enviando...');
+    const r = await testarAgora('AssisConnect', 'Notificação de teste! 🔔');
+    setDebugResult(r.sucesso ? '✓ Notificação disparada!' : `✗ ${r.motivo}`);
+  }
+
+  async function solicitarPermissao() {
+    setDebugResult('Solicitando permissão...');
+    const ok = await pedirPermissao();
+    if (ok) {
+      setDebugResult('✓ Permissão concedida! Clique em "Enviar" para testar.');
+    } else {
+      setDebugResult('✗ Permissão negada. No Chrome: cadeado na barra de endereço → Notificações → Permitir');
+    }
+  }
+
+  function testarToast(tipo) {
+    setDebugModal(false);
+    setToast({ visible: true, message: `Toast de ${tipo} funcionando!`, type: tipo });
+  }
+
+  const progresso = totalDiasMes > 0 ? (diasRegistrados / totalDiasMes) * 100 : 0;
+
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
-    >
+    <View style={{ flex: 1, backgroundColor: c.surface }}>
       {/* Header */}
-      <View style={[styles.header, { height: 56 + insets.top, paddingTop: insets.top }]}>
+      <View style={[styles.header, { height: 64 + insets.top, paddingTop: insets.top, backgroundColor: c.primary }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Inicio</Text>
+          <Text style={[styles.headerGreet, { fontSize: scale(12) }]}>{saudacao()},</Text>
+          <Text style={[styles.headerName, { fontSize: scale(17) }]} numberOfLines={1}>{user?.nome || user?.usuario || 'Funcionário'}</Text>
         </View>
         <View style={styles.headerActions}>
-          <Pressable onPress={dispararDebug} style={styles.headerBtn}>
-            <Feather name="zap" size={20} color={colors.white} />
+          <Pressable onPress={() => { setDebugResult(''); setDebugModal(true); }} style={styles.headerBtn}>
+            <Feather name="zap" size={20} color="#fff" />
           </Pressable>
           <Pressable onPress={() => navigation.navigate('Profile')} style={styles.headerBtn}>
-            <Feather name="user" size={20} color={colors.white} />
+            <Feather name="user" size={20} color="#fff" />
           </Pressable>
           <Pressable onPress={logout} style={styles.headerBtn}>
-            <Feather name="log-out" size={20} color={colors.white} />
+            <Feather name="log-out" size={20} color="#fff" />
           </Pressable>
         </View>
       </View>
+
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(t => ({ ...t, visible: false }))} />
 
-      {/* Stats Cards */}
-      <View style={styles.statsRow}>
-        <StatCard icon="users" label="Total Idosos" value={stats.idosos} color="#8B5E3C" />
-        <StatCard icon="gift" label="Aniversarios" value={stats.aniversarios} color="#A0522D" />
-      </View>
-      <View style={styles.statsRow}>
-        <StatCard icon="clipboard" label="Atividades Hoje" value={stats.atividades} color="#6B4226" />
-        <StatCard icon="briefcase" label="Colaboradores" value={stats.colaboradores} color="#4E3620" />
-      </View>
-
-      {/* Alertas */}
-      <View style={styles.section}>
-        <View style={styles.alertHeader}>
-          <Feather name="bell" size={16} color={colors.primary} />
-          <Text style={styles.sectionTitle}>Alertas</Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}
+      >
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <StatCard icon="users"     label="Total Idosos"    value={stats.idosos}       color={c.primary} />
+          <StatCard icon="gift"      label="Aniversários"    value={stats.aniversarios}  color="#d97706" />
+        </View>
+        <View style={styles.statsRow}>
+          <StatCard icon="clipboard" label="Atividades Hoje" value={stats.atividades}   color="#16a34a" />
+          <StatCard icon="briefcase" label="Colaboradores"   value={stats.colaboradores} color="#2563eb" />
         </View>
 
-        {semVisita.length > 0 && (
-          <View style={[styles.alertItem, styles.alertWarn]}>
-            <Feather name="user-x" size={16} color="#d97706" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.alertTitle}>
-                {semVisita.length} idoso(s) sem visita ha 30+ dias
-              </Text>
-              <Text style={styles.alertSub}>
-                {semVisita.slice(0, 3).map(v => v.nome).join(', ')}
-                {semVisita.length > 3 ? '...' : ''}
-              </Text>
-            </View>
+        {/* Alertas */}
+        <View style={[styles.section, { backgroundColor: c.white }]}>
+          <View style={styles.sectionHeader}>
+            <Feather name="bell" size={15} color={c.primary} />
+            <Text style={[styles.sectionTitle, { color: c.textPrimary, fontSize: scale(14) }]}>Alertas</Text>
           </View>
-        )}
 
-        {stats.aniversarios > 0 && (
-          <View style={[styles.alertItem, styles.alertInfo]}>
-            <Feather name="gift" size={16} color="#2563eb" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.alertTitle}>
-                {stats.aniversarios} aniversariante(s) neste mes
-              </Text>
-              <Text style={styles.alertSub}>Confira a lista abaixo</Text>
+          {semVisita.length > 0 && (
+            <View style={[styles.alertItem, { backgroundColor: alertWarnBg, borderLeftColor: '#d97706' }]}>
+              <Feather name="user-x" size={15} color="#d97706" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.alertTitle, { color: c.textPrimary, fontSize: scale(13) }]}>
+                  {semVisita.length} idoso(s) sem visita há 30+ dias
+                </Text>
+                <Text style={[styles.alertSub, { color: c.textSecondary, fontSize: scale(11) }]}>
+                  {semVisita.slice(0, 3).map(v => v.nome).join(', ')}{semVisita.length > 3 ? '...' : ''}
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        <View style={[styles.alertItem, styles.alertProgress]}>
-          <Feather name="calendar" size={16} color={colors.success} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.alertTitle}>
-              {diasRegistrados} de {totalDiasMes} dias registrados
-            </Text>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${totalDiasMes > 0 ? (diasRegistrados / totalDiasMes) * 100 : 0}%` },
-                ]}
-              />
+          {stats.aniversarios > 0 && (
+            <View style={[styles.alertItem, { backgroundColor: alertInfoBg, borderLeftColor: '#2563eb' }]}>
+              <Feather name="gift" size={15} color="#2563eb" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.alertTitle, { color: c.textPrimary, fontSize: scale(13) }]}>
+                  {stats.aniversarios} aniversariante(s) neste mês
+                </Text>
+                <Text style={[styles.alertSub, { color: c.textSecondary, fontSize: scale(11) }]}>Confira a lista abaixo</Text>
+              </View>
+            </View>
+          )}
+
+          <View style={[styles.alertItem, { backgroundColor: alertOkBg, borderLeftColor: '#16a34a' }]}>
+            <Feather name="calendar" size={15} color="#16a34a" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.alertTitle, { color: c.textPrimary, fontSize: scale(13) }]}>
+                {diasRegistrados} de {totalDiasMes} dias registrados
+              </Text>
+              <View style={[styles.progressBar, { backgroundColor: c.border }]}>
+                <View style={[styles.progressFill, { width: `${progresso}%`, backgroundColor: '#16a34a' }]} />
+              </View>
+              <Text style={[styles.alertSub, { color: c.textSecondary, fontSize: scale(11) }]}>{Math.round(progresso)}% do mês</Text>
             </View>
           </View>
+
+          {semVisita.length === 0 && stats.aniversarios === 0 && (
+            <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(12) }]}>Nenhum alerta no momento</Text>
+          )}
         </View>
 
-        {semVisita.length === 0 && stats.aniversarios === 0 && (
-          <Text style={styles.emptyText}>Nenhum alerta no momento</Text>
-        )}
-      </View>
+        {/* Menu do Dia */}
+        <View style={[styles.section, { backgroundColor: c.white }]}>
+          <Text style={[styles.sectionTitle, { color: c.textPrimary, fontSize: scale(14) }]}>Menu do Dia</Text>
+          {menuHoje ? (
+            <View style={{ gap: 10 }}>
+              {menuHoje.cafe && (
+                <View style={styles.menuRow}>
+                  <View style={[styles.menuIcon, { backgroundColor: '#fef3c7' }]}>
+                    <Feather name="coffee" size={14} color="#d97706" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.menuLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Café da Manhã</Text>
+                    <Text style={[styles.menuText, { color: c.textPrimary, fontSize: scale(13) }]}>{menuHoje.cafe.prato} · {menuHoje.cafe.calorias} kcal</Text>
+                  </View>
+                </View>
+              )}
+              {menuHoje.almoco && (
+                <View style={styles.menuRow}>
+                  <View style={[styles.menuIcon, { backgroundColor: '#dcfce7' }]}>
+                    <Feather name="sun" size={14} color="#16a34a" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.menuLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Almoço</Text>
+                    <Text style={[styles.menuText, { color: c.textPrimary, fontSize: scale(13) }]}>{menuHoje.almoco.prato} · {menuHoje.almoco.calorias} kcal</Text>
+                  </View>
+                </View>
+              )}
+              {menuHoje.jantar && (
+                <View style={styles.menuRow}>
+                  <View style={[styles.menuIcon, { backgroundColor: '#dbeafe' }]}>
+                    <Feather name="moon" size={14} color="#2563eb" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.menuLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Jantar</Text>
+                    <Text style={[styles.menuText, { color: c.textPrimary, fontSize: scale(13) }]}>{menuHoje.jantar.prato} · {menuHoje.jantar.calorias} kcal</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          ) : (
+            <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(12) }]}>Nenhum cardápio cadastrado para hoje</Text>
+          )}
+        </View>
 
-      {/* Menu do Dia */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Menu do Dia</Text>
-        {menuHoje ? (
-          <View style={styles.menuCard}>
-            {menuHoje.cafe && (
-              <View style={styles.menuRow}>
-                <Feather name="coffee" size={16} color={colors.primary} />
-                <Text style={styles.menuLabel}>Cafe:</Text>
-                <Text style={styles.menuText}>{menuHoje.cafe.prato} ({menuHoje.cafe.calorias} kcal)</Text>
-              </View>
-            )}
-            {menuHoje.almoco && (
-              <View style={styles.menuRow}>
-                <Feather name="sun" size={16} color={colors.primary} />
-                <Text style={styles.menuLabel}>Almoco:</Text>
-                <Text style={styles.menuText}>{menuHoje.almoco.prato} ({menuHoje.almoco.calorias} kcal)</Text>
-              </View>
-            )}
-            {menuHoje.jantar && (
-              <View style={styles.menuRow}>
-                <Feather name="moon" size={16} color={colors.primary} />
-                <Text style={styles.menuLabel}>Jantar:</Text>
-                <Text style={styles.menuText}>{menuHoje.jantar.prato} ({menuHoje.jantar.calorias} kcal)</Text>
-              </View>
-            )}
-          </View>
-        ) : (
-          <Text style={styles.emptyText}>Nenhum cardapio cadastrado para hoje</Text>
-        )}
-      </View>
-
-      {/* Aniversariantes do Mes */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Aniversariantes do Mes</Text>
-        {aniversariantes.length > 0 ? (
-          aniversariantes.map((item, i) => (
-            <View key={i} style={styles.listItem}>
+        {/* Aniversariantes */}
+        <View style={[styles.section, { backgroundColor: c.white }]}>
+          <Text style={[styles.sectionTitle, { color: c.textPrimary, fontSize: scale(14) }]}>Aniversariantes do Mês</Text>
+          {aniversariantes.length > 0 ? aniversariantes.map((item, i) => (
+            <View key={i} style={[styles.listItem, { borderBottomColor: c.surface }]}>
               {item.fotoUrl ? (
                 <Image source={{ uri: item.fotoUrl }} style={styles.avatar} />
               ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Feather name="user" size={16} color={colors.textSecondary} />
+                <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: c.surface }]}>
+                  <Feather name="user" size={16} color={c.textSecondary} />
                 </View>
               )}
               <View style={{ flex: 1 }}>
-                <Text style={styles.listName}>{item.nome}</Text>
-                <Text style={styles.listSub}>
+                <Text style={[styles.listName, { color: c.textPrimary, fontSize: scale(13) }]}>{item.nome}</Text>
+                <Text style={[styles.listSub, { color: c.textSecondary, fontSize: scale(11) }]}>
                   {item.dataNascimento ? `${calcularIdade(item.dataNascimento)} anos` : ''}
                 </Text>
               </View>
+              <Feather name="gift" size={16} color="#d97706" />
             </View>
-          ))
-        ) : (
-          <Text style={styles.emptyText}>Nenhum aniversariante neste mes</Text>
-        )}
-      </View>
-
-      {/* Atividades de Hoje */}
-      <View style={[styles.section, { marginBottom: 30 }]}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Atividades de Hoje</Text>
-          <Pressable onPress={() => navigation.navigate('Atividades')}>
-            <Text style={styles.linkText}>Ver todas</Text>
-          </Pressable>
+          )) : (
+            <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(12) }]}>Nenhum aniversariante neste mês</Text>
+          )}
         </View>
-        {atividadesHoje.length > 0 ? (
-          atividadesHoje.map((item, i) => (
-            <View key={i} style={styles.listItem}>
-              <Feather name="activity" size={18} color={colors.primary} />
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.listName}>{item.nome}</Text>
-                <Text style={styles.listSub}>
-                  {item.horaRegistro} - {item.presentes?.length || 0} presentes
+
+        {/* Atividades */}
+        <View style={[styles.section, { backgroundColor: c.white, marginBottom: 30 }]}>
+          <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
+            <Text style={[styles.sectionTitle, { color: c.textPrimary, marginBottom: 0, fontSize: scale(14) }]}>Atividades de Hoje</Text>
+            <Pressable onPress={() => navigation.navigate('Atividades')}>
+              <Text style={[styles.linkText, { color: c.primary, fontSize: scale(12) }]}>Ver todas</Text>
+            </Pressable>
+          </View>
+          {atividadesHoje.length > 0 ? atividadesHoje.map((item, i) => (
+            <View key={i} style={[styles.listItem, { borderBottomColor: c.surface }]}>
+              <View style={[styles.activityDot, { backgroundColor: c.primary }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.listName, { color: c.textPrimary, fontSize: scale(13) }]}>{item.nome}</Text>
+                <Text style={[styles.listSub, { color: c.textSecondary, fontSize: scale(11) }]}>
+                  {item.horaRegistro} · {item.presentes?.length || 0} presentes
                 </Text>
               </View>
             </View>
-          ))
-        ) : (
-          <Text style={styles.emptyText}>Nenhuma atividade registrada hoje</Text>
-        )}
-      </View>
-    </ScrollView>
+          )) : (
+            <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(12) }]}>Nenhuma atividade registrada hoje</Text>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Modal de debug */}
+      <BottomSheet visible={debugModal} onClose={() => setDebugModal(false)}>
+          <View style={[styles.debugModal, { backgroundColor: c.white }]}>
+            <View style={styles.debugHeader}>
+              <Feather name="zap" size={20} color={c.primary} />
+              <Text style={[styles.debugTitle, { color: c.textPrimary }]}>Teste de Notificações</Text>
+              <Pressable onPress={() => setDebugModal(false)}>
+                <Feather name="x" size={22} color={c.textSecondary} />
+              </Pressable>
+            </View>
+
+            {debugResult ? (
+              <View style={[styles.debugResult, { backgroundColor: c.surface }]}>
+                <Text style={[styles.debugResultText, { color: c.textPrimary }]}>{debugResult}</Text>
+              </View>
+            ) : null}
+
+            <Text style={[styles.debugSectionLabel, { color: c.textSecondary }]}>NOTIFICAÇÃO PUSH</Text>
+            <Pressable style={[styles.debugBtn, { backgroundColor: c.primary }]} onPress={solicitarPermissao}>
+              <Feather name="shield" size={16} color="#fff" />
+              <Text style={styles.debugBtnText}>Solicitar permissão</Text>
+            </Pressable>
+            <Pressable style={[styles.debugBtn, { backgroundColor: c.primaryDark }]} onPress={testarPush}>
+              <Feather name="send" size={16} color="#fff" />
+              <Text style={styles.debugBtnText}>Enviar push (2s)</Text>
+            </Pressable>
+
+            <Text style={[styles.debugSectionLabel, { color: c.textSecondary, marginTop: 16 }]}>TOAST IN-APP</Text>
+            <View style={styles.debugToastRow}>
+              {[
+                { tipo: 'success', label: 'Sucesso', color: '#16a34a' },
+                { tipo: 'error',   label: 'Erro',    color: '#dc2626' },
+                { tipo: 'warn',    label: 'Aviso',   color: '#d97706' },
+                { tipo: 'info',    label: 'Info',    color: c.primary },
+              ].map(({ tipo, label, color }) => (
+                <Pressable key={tipo} style={[styles.debugToastBtn, { backgroundColor: color }]} onPress={() => testarToast(tipo)}>
+                  <Text style={styles.debugToastBtnText}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+      </BottomSheet>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
   header: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.white },
-  headerActions: { flexDirection: 'row', gap: 10 },
+  headerGreet: { fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+  headerName: { fontSize: 17, fontWeight: '800', color: '#fff' },
+  headerActions: { flexDirection: 'row', gap: 8 },
   headerBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
   },
   statsRow: { flexDirection: 'row', paddingHorizontal: 8, marginTop: 8 },
-  section: {
-    backgroundColor: colors.white,
-    marginHorizontal: 12,
-    marginTop: 16,
-    borderRadius: 12,
-    padding: 14,
-    elevation: 1,
-    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
-  },
-  sectionTitle: {
-    fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 10,
-  },
-  menuCard: { gap: 8 },
-  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  menuLabel: { fontWeight: '700', color: colors.textPrimary, fontSize: 13 },
-  menuText: { flex: 1, fontSize: 13, color: colors.textSecondary },
-  listItem: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: colors.surface, gap: 10,
-  },
-  avatar: { width: 36, height: 36, borderRadius: 18 },
-  avatarPlaceholder: {
-    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
-  },
-  listName: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
-  listSub: { fontSize: 12, color: colors.textSecondary },
-  emptyText: { fontSize: 13, color: colors.textSecondary, fontStyle: 'italic' },
-  alertHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  section: { marginHorizontal: 12, marginTop: 14, borderRadius: 14, padding: 14, elevation: 1 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  sectionTitle: { fontSize: 15, fontWeight: '700' },
   alertItem: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 10, paddingHorizontal: 10, borderRadius: 8, marginBottom: 6,
+    paddingVertical: 10, paddingHorizontal: 10, borderRadius: 10,
+    borderLeftWidth: 3, marginBottom: 8,
   },
-  alertWarn: { backgroundColor: '#fef3c7' },
-  alertInfo: { backgroundColor: '#dbeafe' },
-  alertProgress: { backgroundColor: '#dcfce7' },
-  alertTitle: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
-  alertSub: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
-  progressBar: {
-    height: 6, backgroundColor: colors.white, borderRadius: 3, marginTop: 6, overflow: 'hidden',
+  alertTitle: { fontSize: 13, fontWeight: '700' },
+  alertSub: { fontSize: 11, marginTop: 2 },
+  progressBar: { height: 6, borderRadius: 3, marginTop: 6, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 3 },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  menuIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  menuLabel: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  menuText: { fontSize: 13, fontWeight: '600', marginTop: 1 },
+  listItem: {
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 10,
+    borderBottomWidth: 1, gap: 10,
   },
-  progressFill: { height: '100%', backgroundColor: colors.success, borderRadius: 3 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  linkText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  avatar: { width: 36, height: 36, borderRadius: 18 },
+  avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  listName: { fontSize: 14, fontWeight: '600' },
+  listSub: { fontSize: 12, marginTop: 1 },
+  activityDot: { width: 8, height: 8, borderRadius: 4 },
+  emptyText: { fontSize: 13, fontStyle: 'italic' },
+  linkText: { fontSize: 12, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  debugModal: { borderRadius: 20, padding: 20 },
+  handle: { width: 40, height: 4, backgroundColor: '#ccc', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  debugHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  debugTitle: { flex: 1, fontSize: 17, fontWeight: '800' },
+  debugResult: { padding: 12, borderRadius: 10, marginBottom: 14 },
+  debugResultText: { fontSize: 13, fontWeight: '600' },
+  debugSectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 },
+  debugBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 13, borderRadius: 12, marginBottom: 8,
+  },
+  debugBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  debugToastRow: { flexDirection: 'row', gap: 8 },
+  debugToastBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+  debugToastBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
 });

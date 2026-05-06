@@ -1,131 +1,110 @@
 import React, { useState } from 'react';
-import {
-  View, Text, Pressable, Modal, StyleSheet, TextInput,
-} from 'react-native';
-import colors from '../theme/colors';
+import { View, Text, Pressable, StyleSheet, TextInput } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { useAccessibility } from '../contexts/AccessibilityContext';
+import BottomSheet from './BottomSheet';
 
 const SEXO_OPTIONS = ['Todos', 'Masculino', 'Feminino'];
 const STATUS_OPTIONS = ['Todos', 'Ativo', 'Inativo', 'Falecido'];
 
 export default function FilterModal({ visible, onClose, onApply, initialFilters }) {
+  const { activeColors: c, scale } = useAccessibility();
   const [sexo, setSexo] = useState(initialFilters?.sexo || 'Todos');
   const [status, setStatus] = useState(initialFilters?.status || 'Todos');
   const [idadeMin, setIdadeMin] = useState(initialFilters?.idadeMin || '');
   const [idadeMax, setIdadeMax] = useState(initialFilters?.idadeMax || '');
 
-  function handleApply() {
-    onApply({ sexo, status, idadeMin, idadeMax });
-    onClose();
-  }
-
+  function handleApply() { onApply({ sexo, status, idadeMin, idadeMax }); onClose(); }
   function handleClear() {
-    setSexo('Todos');
-    setStatus('Todos');
-    setIdadeMin('');
-    setIdadeMax('');
+    setSexo('Todos'); setStatus('Todos'); setIdadeMin(''); setIdadeMax('');
     onApply({ sexo: 'Todos', status: 'Todos', idadeMin: '', idadeMax: '' });
     onClose();
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.modal}>
-          <Text style={styles.title}>Filtros</Text>
+    <BottomSheet visible={visible} onClose={onClose}>
+      <View style={[styles.card, { backgroundColor: c.white }]}>
+        <View style={[styles.header, { borderBottomColor: c.border }]}>
+          <Text style={[styles.title, { color: c.textPrimary }]}>Filtros</Text>
+          <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
+            <Feather name="x" size={20} color={c.textSecondary} />
+          </Pressable>
+        </View>
 
-          <Text style={styles.label}>Sexo</Text>
-          <View style={styles.optionRow}>
+        <View style={styles.body}>
+          <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>SEXO</Text>
+          <View style={styles.chips}>
             {SEXO_OPTIONS.map((opt) => (
               <Pressable
                 key={opt}
-                style={[styles.chip, sexo === opt && styles.chipActive]}
+                style={[styles.chip, { borderColor: c.border, backgroundColor: c.surface },
+                  sexo === opt && { backgroundColor: c.primary, borderColor: c.primary }]}
                 onPress={() => setSexo(opt)}
               >
-                <Text style={[styles.chipText, sexo === opt && styles.chipTextActive]}>{opt}</Text>
+                <Text style={[styles.chipText, { color: c.textSecondary },
+                  sexo === opt && { color: '#fff', fontWeight: '700' }]}>{opt}</Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={[styles.label, { marginTop: 12 }]}>Status</Text>
-          <View style={styles.optionRow}>
+          <Text style={[styles.sectionLabel, { color: c.textSecondary, marginTop: 14 }]}>STATUS</Text>
+          <View style={styles.chips}>
             {STATUS_OPTIONS.map((opt) => (
               <Pressable
                 key={opt}
-                style={[styles.chip, status === opt && styles.chipActive]}
+                style={[styles.chip, { borderColor: c.border, backgroundColor: c.surface },
+                  status === opt && { backgroundColor: c.primary, borderColor: c.primary }]}
                 onPress={() => setStatus(opt)}
               >
-                <Text style={[styles.chipText, status === opt && styles.chipTextActive]}>{opt}</Text>
+                <Text style={[styles.chipText, { color: c.textSecondary },
+                  status === opt && { color: '#fff', fontWeight: '700' }]}>{opt}</Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={[styles.label, { marginTop: 12 }]}>Faixa Etaria</Text>
+          <Text style={[styles.sectionLabel, { color: c.textSecondary, marginTop: 14 }]}>FAIXA ETÁRIA</Text>
           <View style={styles.ageRow}>
-            <TextInput
-              value={idadeMin}
-              onChangeText={setIdadeMin}
-              placeholder="Min"
-              keyboardType="number-pad"
-              style={[styles.input, { flex: 1, marginRight: 8 }]}
-              placeholderTextColor={colors.textSecondary}
-            />
-            <TextInput
-              value={idadeMax}
-              onChangeText={setIdadeMax}
-              placeholder="Max"
-              keyboardType="number-pad"
-              style={[styles.input, { flex: 1 }]}
-              placeholderTextColor={colors.textSecondary}
-            />
+            <TextInput value={idadeMin} onChangeText={setIdadeMin} placeholder="Mín" keyboardType="number-pad"
+              style={[styles.input, { flex: 1, marginRight: 8, backgroundColor: c.surface, borderColor: c.border, color: c.textPrimary }]}
+              placeholderTextColor={c.textSecondary} />
+            <TextInput value={idadeMax} onChangeText={setIdadeMax} placeholder="Máx" keyboardType="number-pad"
+              style={[styles.input, { flex: 1, backgroundColor: c.surface, borderColor: c.border, color: c.textPrimary }]}
+              placeholderTextColor={c.textSecondary} />
           </View>
+        </View>
 
-          <View style={styles.btnRow}>
-            <Pressable style={[styles.btn, styles.btnClear]} onPress={handleClear}>
-              <Text style={styles.btnClearText}>Limpar</Text>
-            </Pressable>
-            <Pressable style={[styles.btn, styles.btnApply]} onPress={handleApply}>
-              <Text style={styles.btnApplyText}>Aplicar</Text>
-            </Pressable>
-          </View>
-
-          <Pressable onPress={onClose}>
-            <Text style={styles.closeText}>Fechar</Text>
+        <View style={[styles.footer, { borderTopColor: c.border }]}>
+          <Pressable style={[styles.btn, { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }]} onPress={handleClear}>
+            <Text style={[styles.btnText, { color: c.textPrimary }]}>Limpar</Text>
+          </Pressable>
+          <Pressable style={[styles.btn, { backgroundColor: c.primary }]} onPress={handleApply}>
+            <Text style={[styles.btnText, { color: '#fff' }]}>Aplicar</Text>
           </Pressable>
         </View>
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+  card: { borderRadius: 20 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1,
   },
-  modal: {
-    backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: 20, paddingBottom: 30,
-  },
-  title: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, textAlign: 'center', marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
-  optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
-    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceLight,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 13, color: colors.textPrimary },
-  chipTextActive: { color: colors.white, fontWeight: '700' },
+  title: { fontSize: 17, fontWeight: '800' },
+  closeBtn: { padding: 4 },
+  body: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
+  chipText: { fontSize: 13 },
   ageRow: { flexDirection: 'row' },
-  input: {
-    backgroundColor: colors.surfaceLight, borderRadius: 10, paddingHorizontal: 12,
-    paddingVertical: 10, borderWidth: 1, borderColor: colors.border, fontSize: 14,
+  input: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, fontSize: 14 },
+  footer: {
+    flexDirection: 'row', gap: 10,
+    paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1,
   },
-  btnRow: { flexDirection: 'row', marginTop: 20, gap: 10 },
-  btn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
-  btnClear: { backgroundColor: colors.surface },
-  btnApply: { backgroundColor: colors.primary },
-  btnClearText: { color: colors.textPrimary, fontWeight: '700' },
-  btnApplyText: { color: colors.white, fontWeight: '700' },
-  closeText: { textAlign: 'center', marginTop: 12, color: colors.textSecondary, fontSize: 14 },
+  btn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
+  btnText: { fontWeight: '700', fontSize: 14 },
 });
