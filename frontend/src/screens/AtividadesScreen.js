@@ -90,7 +90,10 @@ export default function AtividadesScreen({ navigation }) {
     return dateB.localeCompare(dateA);
   });
 
-  const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const MESES = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+  ];
 
   if (loading) return <LoadingOverlay />;
 
@@ -106,7 +109,7 @@ export default function AtividadesScreen({ navigation }) {
           <TouchableOpacity onPress={() => mudarMes(-1)} style={styles.arrow}>
             <Feather name="chevron-left" size={22} color={colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.monthTitle}>{MESES[mes - 1]} / {ano}</Text>
+          <Text style={styles.monthTitle}>{MESES[mes - 1]} de {ano}</Text>
           <TouchableOpacity onPress={() => mudarMes(1)} style={styles.arrow}>
             <Feather name="chevron-right" size={22} color={colors.primary} />
           </TouchableOpacity>

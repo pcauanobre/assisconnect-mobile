@@ -5,7 +5,11 @@ import { getAtividades } from '../../services/atividadeService';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import colors from '../../theme/colors';
 
-const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const MESES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function HistoricoPresencaScreen({ route }) {
   const { idosoId, idosoNome } = route.params;
@@ -68,7 +72,7 @@ export default function HistoricoPresencaScreen({ route }) {
           <TouchableOpacity onPress={() => mudarMes(-1)} style={styles.arrow}>
             <Feather name="chevron-left" size={20} color={colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.monthTitle}>{MESES[mes - 1]} / {ano}</Text>
+          <Text style={styles.monthTitle}>{MESES[mes - 1]} de {ano}</Text>
           <TouchableOpacity onPress={() => mudarMes(1)} style={styles.arrow}>
             <Feather name="chevron-right" size={20} color={colors.primary} />
           </TouchableOpacity>
@@ -97,6 +101,14 @@ export default function HistoricoPresencaScreen({ route }) {
       </View>
 
       <View style={styles.calendar}>
+        {DIAS_SEMANA.map((ds) => (
+          <View key={ds} style={styles.weekLabel}>
+            <Text style={styles.weekLabelText}>{ds}</Text>
+          </View>
+        ))}
+        {Array.from({ length: new Date(ano, mes - 1, 1).getDay() }).map((_, i) => (
+          <View key={`empty-${i}`} style={styles.day} />
+        ))}
         {dias.map((d) => (
           <View
             key={d.dia}
@@ -148,8 +160,12 @@ const styles = StyleSheet.create({
   legendDot: { width: 12, height: 12, borderRadius: 6 },
   legendText: { fontSize: 11, color: colors.textSecondary },
   calendar: {
-    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 12, gap: 6,
+    flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, gap: 6,
   },
+  weekLabel: {
+    width: 40, height: 28, alignItems: 'center', justifyContent: 'center',
+  },
+  weekLabelText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
   day: {
     width: 40, height: 40, borderRadius: 8, backgroundColor: colors.white,
     alignItems: 'center', justifyContent: 'center',
