@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { AccessibilityProvider, useAccessibility } from './src/contexts/AccessibilityContext';
+import { DebugProvider } from './src/contexts/DebugContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 function ThemedStatusBar() {
@@ -15,8 +16,10 @@ export default function App() {
     <SafeAreaProvider>
       <AccessibilityProvider>
         <AuthProvider>
-          <ThemedStatusBar />
-          <AppNavigator />
+          <DebugProvider>
+            <ThemedStatusBar />
+            <AppNavigator />
+          </DebugProvider>
         </AuthProvider>
       </AccessibilityProvider>
     </SafeAreaProvider>

@@ -17,4 +17,6 @@ public interface VisitaRepository extends JpaRepository<Visita, Long> {
 
     @Query("SELECT DISTINCT v.idosoId FROM Visita v WHERE v.dataVisita >= :dataLimite")
     List<Long> findIdososComVisitaRecente(@Param("dataLimite") LocalDate dataLimite);
+
+    void deleteByIdosoId(Long idosoId);
 }

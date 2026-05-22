@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, TextInput,
-  Alert, ActivityIndicator, RefreshControl, Modal,
+  ActivityIndicator, RefreshControl, Modal,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -10,6 +10,8 @@ import {
   gerarPendentes, getRelatoriosPorAno,
 } from '../services/relatorioService';
 import ScreenHeader from '../components/ScreenHeader';
+import FeedbackDialog from '../components/FeedbackDialog';
+import useFeedback from '../hooks/useFeedback';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { gerarPDFRelatorio } from '../utils/pdfGenerator';
 
@@ -40,6 +42,8 @@ export default function RelatorioMensalScreen() {
   const [expandedMonth, setExpandedMonth] = useState(null);
   const [stats, setStats] = useState(null);
   const [relatorio, setRelatorio] = useState(null);
+
+  const fb = useFeedback();
   const [observacoes, setObservacoes] = useState('');
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -69,8 +73,8 @@ export default function RelatorioMensalScreen() {
         const statsRes = await getEstatisticas(mesReal, anoReal).catch(() => null);
         setQtdMesAtual(statsRes?.data?.quantidadeIdosos ?? null);
       }
-    } catch (e) {
-      console.log('[RELATORIO] Erro ao carregar ano:', e);
+    } catch {
+      // mantém último ano carregado
     } finally {
       setLoadingAno(false);
     }
@@ -151,8 +155,8 @@ export default function RelatorioMensalScreen() {
       } else {
         setObservacoes('');
       }
-    } catch (e) {
-      console.log('[RELATORIO] Erro:', e);
+    } catch {
+      // mantém último detalhamento carregado
     } finally {
       setLoadingDetail(false);
     }
@@ -168,11 +172,10 @@ export default function RelatorioMensalScreen() {
         quantidadeIdosos: stats?.quantidadeIdosos || 0,
         observacoes,
       });
-      Alert.alert('Sucesso', 'Relatorio salvo!');
-      // Recarrega
+      fb.success('Relatório salvo!', `Relatório de ${MESES[mes - 1]}/${anoSelecionado} arquivado.`, 1600);
       await loadAno(anoSelecionado);
-    } catch (e) {
-      Alert.alert('Erro', 'Nao foi possivel salvar o relatorio.');
+    } catch {
+      fb.error('Falha ao salvar', 'Não foi possível arquivar o relatório.');
     } finally {
       setSaving(false);
     }
@@ -354,8 +357,8 @@ export default function RelatorioMensalScreen() {
                           onPress={async () => {
                             try {
                               await gerarPDFRelatorio({ estatisticas: stats, observacoes }, mes, anoSelecionado);
-                            } catch (e) {
-                              Alert.alert('Erro', 'Falha ao gerar PDF.');
+                            } catch {
+                              fb.error('Falha ao gerar PDF', 'Não foi possível exportar o relatório.');
                             }
                           }}
                         >
@@ -407,6 +410,15 @@ export default function RelatorioMensalScreen() {
           </View>
         </View>
       </Modal>
+
+      <FeedbackDialog
+        visible={fb.visible}
+        onClose={fb.close}
+        type={fb.type}
+        title={fb.title}
+        message={fb.message}
+        autoCloseMs={fb.autoCloseMs}
+      />
     </View>
   );
 }

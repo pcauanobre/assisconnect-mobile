@@ -37,6 +37,66 @@ VALUES ('Benedita Souza Martins',  'F', '1939-01-30', 'Viuva',      'Roberto Mar
 INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
 VALUES ('Francisco Gomes Neto',    'M', '1943-06-18', 'Solteiro',   'Claudia Gomes',    '(11) 98888-0010', 'DPOC',                   'Uso de oxigenio noturno',    '2025-05-20', false, false, 'https://randomuser.me/api/portraits/men/68.jpg');
 
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Severino Mendes Cunha',   'M', '1937-10-25', 'Viuvo',      'Lucia Mendes',     '(11) 98888-0011', 'Catarata',               'Cirurgia agendada',          '2025-06-03', false, false, 'https://randomuser.me/api/portraits/men/55.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Helena Batista Cardoso',  'F', '1946-03-12', 'Casada',     'Andre Cardoso',    '(11) 98888-0012', 'Artrose',                'Dificuldade locomocao',      '2025-06-12', false, false, 'https://randomuser.me/api/portraits/women/56.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Geraldo Pinto Ramos',     'M', '1944-12-05', 'Casado',     'Vera Ramos',       '(11) 98888-0013', 'Hipertensao',            'Monitoramento constante',    '2025-06-22', false, false, 'https://randomuser.me/api/portraits/men/41.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Iracema Sousa Vieira',    'F', '1941-09-19', 'Viuva',      'Tiago Vieira',     '(11) 98888-0014', 'Diabetes tipo 2',        'Dieta sem acucar',           '2025-07-04', false, false, 'https://randomuser.me/api/portraits/women/42.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Mauricio Almeida Borges', 'M', '1936-04-08', 'Viuvo',      'Renata Borges',    '(11) 98888-0015', 'AVC previo',             'Reabilitacao motora',        '2025-07-15', false, false, 'https://randomuser.me/api/portraits/men/45.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Lourdes Carvalho Rocha',  'F', '1949-07-23', 'Casada',     'Marcelo Rocha',    '(11) 98888-0016', 'Glaucoma',               'Colirio diario',             '2025-07-28', false, false, 'https://randomuser.me/api/portraits/women/45.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Joaquim Barbosa Lima',    'M', '1933-11-14', 'Casado',     'Sandra Lima',      '(11) 98888-0017', 'Alzheimer moderado',     'Necessita acompanhamento',   '2025-08-05', false, false, 'https://randomuser.me/api/portraits/men/50.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Aparecida Nunes Freitas', 'F', '1947-02-28', 'Divorciada', 'Carla Freitas',    '(11) 98888-0018', 'Fibromialgia',           'Tratamento da dor cronica',  '2025-08-19', false, false, 'https://randomuser.me/api/portraits/women/50.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Raimundo Teixeira Melo',  'M', '1942-06-30', 'Viuvo',      'Bruno Melo',       '(11) 98888-0019', 'Insuficiencia renal',    'Hemodialise 3x semana',      '2025-09-02', false, false, 'https://randomuser.me/api/portraits/men/52.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Vitoria Ribeiro Pacheco', 'F', '1944-05-17', 'Viuva',      'Igor Pacheco',     '(11) 98888-0020', 'Osteopenia',             'Suplementacao de calcio',    '2025-09-14', false, false, 'https://randomuser.me/api/portraits/women/52.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Edgar Antunes Siqueira',  'M', '1939-08-04', 'Solteiro',   'Patricia Antunes', '(11) 98888-0021', 'Asma',                   'Bombinha de resgate',        '2025-09-25', false, false, 'https://randomuser.me/api/portraits/men/58.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Cecilia Moreira Tavares', 'F', '1950-10-11', 'Casada',     'Hugo Tavares',     '(11) 98888-0022', 'Anemia',                 'Acompanhamento mensal',      '2025-10-06', false, false, 'https://randomuser.me/api/portraits/women/58.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Otavio Cunha Marinho',    'M', '1945-01-22', 'Casado',     'Sofia Marinho',    '(11) 98888-0023', 'Hernia de disco',        'Fisioterapia regular',       '2025-10-18', false, false, 'https://randomuser.me/api/portraits/men/61.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Marlene Dias Camargo',    'F', '1938-12-07', 'Viuva',      'Ricardo Camargo',  '(11) 98888-0024', 'Hipertireoidismo',       'Controle hormonal',          '2025-10-30', false, false, 'https://randomuser.me/api/portraits/women/61.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Bento Araujo Cavalcante', 'M', '1940-04-26', 'Viuvo',      'Marina Cavalcante','(11) 98888-0025', 'Arritmia cardiaca',      'Marcapasso implantado',      '2025-11-08', false, false, 'https://randomuser.me/api/portraits/men/63.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Sonia Castro Bezerra',    'F', '1943-03-09', 'Divorciada', 'Felipe Bezerra',   '(11) 98888-0026', 'Depressao maior',        'Psicoterapia semanal',       '2025-11-20', true,  false, 'https://randomuser.me/api/portraits/women/63.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Domingos Pires Andrade',  'M', '1934-07-15', 'Viuvo',      'Helena Andrade',   '(11) 98888-0027', 'Demencia vascular',      'Cuidados continuos',         '2025-12-02', false, false, 'https://randomuser.me/api/portraits/men/66.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Cleusa Silveira Goncalves','F','1946-11-29', 'Casada',     'Daniel Goncalves', '(11) 98888-0028', 'Colesterol alto',        'Estatinas e dieta',          '2025-12-15', false, false, 'https://randomuser.me/api/portraits/women/66.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Hildebrando Macedo Silva','M', '1932-05-03', 'Viuvo',      'Beatriz Macedo',   '(11) 98888-0029', 'Cancer de prostata',     'Tratamento oncologico',      '2026-01-10', false, true,  'https://randomuser.me/api/portraits/men/74.jpg');
+
+INSERT INTO idosos (nome, sexo, data_nascimento, estado_civil, responsavel, telefone_responsavel, doencas, observacoes, data_criacao, inativo, falecido, foto_url)
+VALUES ('Edna Coutinho Magalhaes', 'F', '1942-08-21', 'Solteira',   'Vinicius Magalhaes','(11) 98888-0030', 'Bronquite cronica',     'Inalacao 2x dia',            '2026-01-25', false, false, 'https://randomuser.me/api/portraits/women/74.jpg');
+
 -- Cardapio semanal
 -- tipo: 'cafe' | 'almoco' | 'jantar'  (lowercase — padrao do frontend)
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Segunda', 'cafe',   'Pao integral com queijo e cafe com leite', 220);
@@ -94,6 +154,11 @@ INSERT INTO registros_saude (idoso_id, data, peso, pressao_sistolica, pressao_di
 VALUES (2, '2026-04-10', 75.0, 140, 90, 36.7, 95, 'Pressao um pouco alta');
 INSERT INTO registros_saude (idoso_id, data, peso, pressao_sistolica, pressao_diastolica, temperatura, glicemia, observacoes)
 VALUES (3, '2026-04-05', 62.4, 120, 75, 36.3, 90, '');
+
+-- Atividades (RF06 / RF12) — entradas iniciais para aparecerem no seletor
+INSERT INTO atividade (nome, data_registro, hora_registro) VALUES ('Fisioterapia',  '2026-01-01', '09:00:00');
+INSERT INTO atividade (nome, data_registro, hora_registro) VALUES ('Artesanato',    '2026-01-01', '14:00:00');
+INSERT INTO atividade (nome, data_registro, hora_registro) VALUES ('Musicoterapia', '2026-01-01', '16:00:00');
 
 -- Visitas (RF13)
 INSERT INTO visitas (idoso_id, data_visita, nome_visitante, parentesco, observacoes)

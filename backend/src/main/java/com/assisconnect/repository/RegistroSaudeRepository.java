@@ -11,4 +11,6 @@ public interface RegistroSaudeRepository extends JpaRepository<RegistroSaude, Lo
     List<RegistroSaude> findByIdosoIdOrderByDataDesc(Long idosoId);
 
     Optional<RegistroSaude> findTop1ByIdosoIdOrderByDataDesc(Long idosoId);
+
+    void deleteByIdosoId(Long idosoId);
 }

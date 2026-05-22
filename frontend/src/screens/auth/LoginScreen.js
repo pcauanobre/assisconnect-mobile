@@ -9,6 +9,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 import Toast from '../../components/Toast';
+import FeedbackDialog from '../../components/FeedbackDialog';
+import useFeedback from '../../hooks/useFeedback';
 
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
@@ -18,6 +20,7 @@ export default function LoginScreen({ navigation }) {
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const fb = useFeedback();
 
   function showToast(message, type = 'info') {
     setToast({ visible: true, message, type });
@@ -82,10 +85,11 @@ export default function LoginScreen({ navigation }) {
       await login(emailTrim, senhaTrim);
     } catch (err) {
       shake();
-      const msg = err?.response?.status === 401
-        ? 'Email ou senha inválidos'
-        : err?.response?.data?.message || 'Sem conexão com o servidor';
-      showToast(msg, 'error');
+      const is401 = err?.response?.status === 401;
+      fb.error(
+        is401 ? 'Credenciais inválidas' : 'Não foi possível entrar',
+        is401 ? 'Verifique seu email e senha.' : (err?.response?.data?.message || 'Sem conexão com o servidor.'),
+      );
     } finally {
       setLoading(false);
     }
@@ -193,6 +197,14 @@ export default function LoginScreen({ navigation }) {
         message={toast.message}
         type={toast.type}
         onHide={() => setToast(t => ({ ...t, visible: false }))}
+      />
+      <FeedbackDialog
+        visible={fb.visible}
+        onClose={fb.close}
+        type={fb.type}
+        title={fb.title}
+        message={fb.message}
+        autoCloseMs={fb.autoCloseMs}
       />
     </KeyboardAvoidingView>
   );

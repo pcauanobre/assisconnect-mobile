@@ -1,18 +1,55 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
 export default function StatCard({ icon, label, value, color }) {
   const { activeColors: c, scale } = useAccessibility();
+  const [display, setDisplay] = useState(0);
+  const entrance = useRef(new Animated.Value(0)).current;
+  const counter = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(entrance, {
+      toValue: 1,
+      duration: 320,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [entrance]);
+
+  useEffect(() => {
+    const target = Number(value) || 0;
+    counter.setValue(0);
+    const id = counter.addListener(({ value: v }) => {
+      setDisplay(Math.round(v * target));
+    });
+    Animated.timing(counter, {
+      toValue: 1,
+      duration: 700,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    return () => counter.removeListener(id);
+  }, [value, counter]);
+
+  const translateY = entrance.interpolate({ inputRange: [0, 1], outputRange: [12, 0] });
+
   return (
-    <View style={[styles.card, { backgroundColor: c.white }]}>
+    <Animated.View
+      style={[
+        styles.card,
+        { backgroundColor: c.white, opacity: entrance, transform: [{ translateY }] },
+      ]}
+    >
       <View style={[styles.iconBox, { backgroundColor: color || c.primary }]}>
         <Feather name={icon} size={22} color="#fff" />
       </View>
-      <Text style={[styles.value, { color: c.textPrimary, fontSize: scale(26) }]}>{value ?? '-'}</Text>
+      <Text style={[styles.value, { color: c.textPrimary, fontSize: scale(26) }]}>
+        {value == null ? '-' : display}
+      </Text>
       <Text style={[styles.label, { color: c.textSecondary, fontSize: scale(11) }]}>{label}</Text>
-    </View>
+    </Animated.View>
   );
 }
 

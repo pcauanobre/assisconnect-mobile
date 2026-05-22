@@ -10,4 +10,6 @@ public interface MedicamentoRepository extends JpaRepository<Medicamento, Long> 
     List<Medicamento> findByIdosoIdOrderByNomeAsc(Long idosoId);
 
     List<Medicamento> findByIdosoIdAndAtivoTrueOrderByNomeAsc(Long idosoId);
+
+    void deleteByIdosoId(Long idosoId);
 }

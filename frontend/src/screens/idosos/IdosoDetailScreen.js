@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity, Alert, Pressable } from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getIdoso, deleteIdoso } from '../../services/idosoService';
@@ -8,8 +8,12 @@ import { getMedicamentosByIdoso } from '../../services/medicamentoService';
 import { getVisitasPorIdoso } from '../../services/visitaService';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import Toast from '../../components/Toast';
+import FeedbackDialog from '../../components/FeedbackDialog';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import useFeedback from '../../hooks/useFeedback';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 import { gerarPDFFichaIdoso } from '../../utils/pdfGenerator';
+import { calcularIdade } from '../../utils/helpers';
 
 export default function IdosoDetailScreen({ route, navigation }) {
   const { id } = route.params;
@@ -19,18 +23,21 @@ export default function IdosoDetailScreen({ route, navigation }) {
   const [exportando, setExportando] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const showToast = (m, t = 'info') => setToast({ visible: true, message: m, type: t });
+  const fb = useFeedback();
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(false);
 
   function confirmarExcluir() {
-    Alert.alert('Excluir idoso', `Deseja excluir "${idoso.nome}"? Esta ação não pode ser desfeita.`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => {
-        try {
-          await deleteIdoso(id);
-          showToast('Idoso excluído.', 'success');
-          setTimeout(() => navigation.goBack(), 800);
-        } catch { showToast('Falha ao excluir.', 'error'); }
-      }},
-    ]);
+    setConfirmandoExcluir(true);
+  }
+
+  async function executarExclusao() {
+    try {
+      await deleteIdoso(id);
+      fb.success('Idoso excluído', `${idoso.nome} e todos os registros relacionados foram removidos.`, 1400);
+      setTimeout(() => navigation.goBack(), 1500);
+    } catch {
+      fb.error('Falha ao excluir', 'Tente novamente em alguns instantes.');
+    }
   }
 
   useFocusEffect(useCallback(() => { loadIdoso(); }, []));
@@ -39,19 +46,9 @@ export default function IdosoDetailScreen({ route, navigation }) {
     try {
       const res = await getIdoso(id);
       setIdoso(res.data);
-    } catch (e) {
-      console.log('[IDOSO_DETAIL] Erro:', e);
+    } catch {
+      fb.error('Erro ao carregar', 'Não foi possível buscar os dados do idoso.');
     } finally { setLoading(false); }
-  }
-
-  function calcularIdade(dataNasc) {
-    if (!dataNasc) return '?';
-    const hoje = new Date();
-    const nasc = new Date(dataNasc);
-    let idade = hoje.getFullYear() - nasc.getFullYear();
-    const m = hoje.getMonth() - nasc.getMonth();
-    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
-    return idade;
   }
 
   async function exportarPDF() {
@@ -69,7 +66,7 @@ export default function IdosoDetailScreen({ route, navigation }) {
         visitasRes.status === 'fulfilled' ? (visitasRes.value?.data || []).slice(0, 5) : [],
       );
     } catch {
-      Alert.alert('Erro', 'Não foi possível gerar o PDF.');
+      fb.error('Falha ao gerar PDF', 'Não foi possível exportar a ficha.');
     } finally { setExportando(false); }
   }
 
@@ -191,6 +188,24 @@ export default function IdosoDetailScreen({ route, navigation }) {
     </ScrollView>
     <Toast visible={toast.visible} message={toast.message} type={toast.type}
       onHide={() => setToast(t => ({ ...t, visible: false }))} />
+    <FeedbackDialog
+      visible={fb.visible}
+      onClose={fb.close}
+      type={fb.type}
+      title={fb.title}
+      message={fb.message}
+      autoCloseMs={fb.autoCloseMs}
+    />
+    <ConfirmDialog
+      visible={confirmandoExcluir}
+      onClose={() => setConfirmandoExcluir(false)}
+      onConfirm={executarExclusao}
+      title="Excluir idoso?"
+      message={`Esta ação não pode ser desfeita. ${idoso?.nome || ''} e todos os registros de saúde, medicamentos e visitas serão removidos.`}
+      confirmLabel="Excluir"
+      variant="danger"
+      icon="trash-2"
+    />
     </View>
   );
 }

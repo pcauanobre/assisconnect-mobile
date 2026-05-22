@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, Platform, Pressable, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useAccessibility } from '../contexts/AccessibilityContext';
@@ -11,18 +11,50 @@ export default function ScreenHeader({ title, onBack }) {
   const insets = useSafeAreaInsets();
   const topPadding = Platform.OS === 'web' ? 0 : insets.top;
 
+  const enter = useRef(new Animated.Value(0)).current;
+  const backScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [enter]);
+
+  const titleOpacity = enter;
+  const titleTranslate = enter.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] });
+
   return (
-    <View style={[
+    <Animated.View style={[
       styles.header,
       { height: HEADER_HEIGHT + topPadding, paddingTop: topPadding, backgroundColor: activeColors.primary },
     ]}>
       {onBack && (
-        <Pressable onPress={onBack} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color="#fff" />
+        <Pressable
+          onPress={onBack}
+          onPressIn={() => Animated.spring(backScale, { toValue: 0.85, useNativeDriver: true }).start()}
+          onPressOut={() => Animated.spring(backScale, { toValue: 1, friction: 4, useNativeDriver: true }).start()}
+          style={styles.backBtn}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
+          <Animated.View style={{ transform: [{ scale: backScale }] }}>
+            <Feather name="arrow-left" size={22} color="#fff" />
+          </Animated.View>
         </Pressable>
       )}
-      <Text style={[styles.title, { color: '#fff', fontSize: scale(18) }]}>{title}</Text>
-    </View>
+      <Animated.Text
+        style={[
+          styles.title,
+          { color: '#fff', fontSize: scale(18), opacity: titleOpacity, transform: [{ translateY: titleTranslate }] },
+        ]}
+      >
+        {title}
+      </Animated.Text>
+    </Animated.View>
   );
 }
 

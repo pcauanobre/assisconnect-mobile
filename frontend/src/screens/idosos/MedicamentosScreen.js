@@ -1,10 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable,
-  TextInput, Alert, ScrollView, Switch,
+  TextInput, ScrollView, Switch,
 } from 'react-native';
 import BottomSheet from '../../components/BottomSheet';
 import Toast from '../../components/Toast';
+import FeedbackDialog from '../../components/FeedbackDialog';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import useFeedback from '../../hooks/useFeedback';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -25,6 +28,8 @@ export default function MedicamentosScreen({ route }) {
   const [form, setForm] = useState({ nome: '', dosagem: '', horarios: '', frequencia: 'Diário', observacoes: '', ativo: true });
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
+  const fb = useFeedback();
+  const [excluirAlvo, setExcluirAlvo] = useState(null);
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
@@ -33,7 +38,7 @@ export default function MedicamentosScreen({ route }) {
       setLoading(true);
       const res = await getMedicamentosByIdoso(idosoId);
       setMedicamentos(res.data);
-    } catch (e) { console.log('[MED] Erro:', e); }
+    } catch { /* mantém última lista carregada */ }
     finally { setLoading(false); }
   }
 
@@ -57,19 +62,30 @@ export default function MedicamentosScreen({ route }) {
       if (editando) await updateMedicamento(editando.id, payload);
       else await createMedicamento(payload);
       setModalVisible(false);
-      showToast(editando ? 'Medicamento atualizado!' : 'Medicamento cadastrado!', 'success');
+      fb.success(
+        editando ? 'Medicamento atualizado!' : 'Medicamento cadastrado!',
+        editando ? 'As alterações foram salvas.' : `${form.nome} foi adicionado à lista.`,
+        1500,
+      );
       await load();
-    } catch { showToast('Não foi possível salvar o medicamento.', 'error'); }
+    } catch {
+      fb.error('Não foi possível salvar', 'Verifique os dados e tente novamente.');
+    }
   }
 
   function confirmarExcluir(med) {
-    Alert.alert('Excluir medicamento', `Deseja excluir "${med.nome}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => {
-        try { await deleteMedicamento(med.id); showToast('Medicamento removido.', 'success'); await load(); }
-        catch { showToast('Falha ao excluir.', 'error'); }
-      }},
-    ]);
+    setExcluirAlvo(med);
+  }
+
+  async function executarExclusao() {
+    if (!excluirAlvo) return;
+    try {
+      await deleteMedicamento(excluirAlvo.id);
+      fb.success('Medicamento removido', `${excluirAlvo.nome} foi excluído.`, 1400);
+      await load();
+    } catch {
+      fb.error('Falha ao excluir', 'Tente novamente em alguns instantes.');
+    }
   }
 
   if (loading) return <LoadingOverlay />;
@@ -185,6 +201,24 @@ export default function MedicamentosScreen({ route }) {
       </BottomSheet>
       <Toast visible={toast.visible} message={toast.message} type={toast.type}
         onHide={() => setToast(t => ({ ...t, visible: false }))} />
+      <FeedbackDialog
+        visible={fb.visible}
+        onClose={fb.close}
+        type={fb.type}
+        title={fb.title}
+        message={fb.message}
+        autoCloseMs={fb.autoCloseMs}
+      />
+      <ConfirmDialog
+        visible={!!excluirAlvo}
+        onClose={() => setExcluirAlvo(null)}
+        onConfirm={executarExclusao}
+        title="Excluir medicamento?"
+        message={excluirAlvo ? `Esta ação não pode ser desfeita. "${excluirAlvo.nome}" será removido.` : ''}
+        confirmLabel="Excluir"
+        variant="danger"
+        icon="trash-2"
+      />
     </View>
   );
 }

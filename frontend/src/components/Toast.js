@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Text, StyleSheet, Animated, Easing } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
@@ -12,7 +12,10 @@ const ICONS = {
 
 export default function Toast({ visible, message, type = 'info', onHide, duration = 2500 }) {
   const { activeColors: c, scale } = useAccessibility();
+  const [mounted, setMounted] = useState(visible);
   const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(-20)).current;
+  const timerRef = useRef(null);
 
   const COLORS = {
     success: c.success || '#16a34a',
@@ -23,22 +26,45 @@ export default function Toast({ visible, message, type = 'info', onHide, duratio
 
   useEffect(() => {
     if (visible) {
-      Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
-      const t = setTimeout(() => {
-        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true })
-          .start(() => onHide && onHide());
-      }, duration);
-      return () => clearTimeout(t);
-    }
-  }, [visible]);
+      setMounted(true);
+      opacity.setValue(0);
+      translateY.setValue(-20);
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(translateY, { toValue: 0, tension: 110, friction: 9, useNativeDriver: true }),
+      ]).start();
 
-  if (!visible) return null;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(opacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+          Animated.timing(translateY, { toValue: -20, duration: 250, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+        ]).start(({ finished }) => {
+          if (finished) {
+            setMounted(false);
+            onHide && onHide();
+          }
+        });
+      }, duration);
+
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+      };
+    }
+  }, [visible, duration, onHide, opacity, translateY]);
+
+  if (!mounted) return null;
 
   const bg = COLORS[type] || COLORS.info;
   const icon = ICONS[type] || ICONS.info;
 
   return (
-    <Animated.View style={[styles.wrapper, { opacity, backgroundColor: bg }]} pointerEvents="none">
+    <Animated.View
+      style={[styles.wrapper, { opacity, transform: [{ translateY }], backgroundColor: bg }]}
+      pointerEvents="none"
+      accessibilityLiveRegion="polite"
+      accessibilityRole="alert"
+    >
       <Feather name={icon} size={18} color="#fff" />
       <Text style={[styles.text, { fontSize: scale(13) }]}>{message}</Text>
     </Animated.View>

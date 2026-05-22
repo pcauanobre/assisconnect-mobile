@@ -11,9 +11,11 @@ import { getBackup } from '../services/backupService';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import AdminUsuariosModal from '../components/AdminUsuariosModal';
 import Toast from '../components/Toast';
+import FeedbackDialog from '../components/FeedbackDialog';
+import useFeedback from '../hooks/useFeedback';
 
 export default function ProfileScreen({ navigation }) {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, logout } = useAuth();
   const { activeColors: c, scale } = useAccessibility();
   const [nome, setNome] = useState(user?.nome || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -22,6 +24,7 @@ export default function ProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const fb = useFeedback();
 
   function showToast(message, type = 'info') {
     setToast({ visible: true, message, type });
@@ -54,12 +57,19 @@ export default function ProfileScreen({ navigation }) {
       if (fotoBase64 && fotoBase64 !== user?.fotoUrl) {
         data.fotoBase64 = fotoBase64;
       }
-      await updatePerfil(user.usuario, data);
-      await updateProfile(data);
-      showToast('Perfil atualizado com sucesso!', 'success');
-      setTimeout(() => navigation.goBack(), 900);
-    } catch (err) {
-      showToast('Não foi possível atualizar o perfil.', 'error');
+      const res = await updatePerfil(user.usuario, data);
+      // Backend retorna o usuário atualizado com fotoUrl (base64) — usar isso no estado local
+      const updated = res?.data || {};
+      await updateProfile({
+        nome: updated.nome ?? data.nome,
+        email: updated.email ?? data.email,
+        telefone: updated.telefone ?? data.telefone,
+        fotoUrl: updated.fotoUrl ?? (data.fotoBase64 || user?.fotoUrl),
+      });
+      fb.success('Perfil atualizado!', 'Suas alterações foram salvas.', 1400);
+      setTimeout(() => navigation.goBack(), 1500);
+    } catch {
+      fb.error('Não foi possível salvar', 'Verifique sua conexão e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -166,7 +176,7 @@ export default function ProfileScreen({ navigation }) {
                   a.click();
                   document.body.removeChild(a);
                   URL.revokeObjectURL(url);
-                  showToast(`Backup baixado: ${nomeArquivo}`, 'success');
+                  fb.success('Backup gerado', `Arquivo: ${nomeArquivo}`, 2200);
                 } else {
                   // Mobile: compartilha via sistema
                   const FileSystem = require('expo-file-system');
@@ -180,8 +190,8 @@ export default function ProfileScreen({ navigation }) {
                     dialogTitle: 'Salvar backup AssisConnect',
                   });
                 }
-              } catch (e) {
-                showToast('Falha ao gerar backup', 'error');
+              } catch {
+                fb.error('Falha ao gerar backup', 'Não foi possível exportar os dados.');
               }
             }}
           >
@@ -196,12 +206,28 @@ export default function ProfileScreen({ navigation }) {
           <Text style={[styles.menuLabel, { color: c.textPrimary, fontSize: scale(14) }]}>Sobre o App</Text>
           <Feather name="chevron-right" size={18} color={c.textSecondary} />
         </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.logoutBtn, { borderColor: '#dc2626' }, pressed && { opacity: 0.7 }]}
+          onPress={logout}
+        >
+          <Feather name="log-out" size={18} color="#dc2626" />
+          <Text style={[styles.logoutText, { fontSize: scale(14) }]}>Sair</Text>
+        </Pressable>
       </View>
     </ScrollView>
 
     <AdminUsuariosModal visible={showAdmin} onClose={() => setShowAdmin(false)} />
     <Toast visible={toast.visible} message={toast.message} type={toast.type}
       onHide={() => setToast(t => ({ ...t, visible: false }))} />
+    <FeedbackDialog
+      visible={fb.visible}
+      onClose={fb.close}
+      type={fb.type}
+      title={fb.title}
+      message={fb.message}
+      autoCloseMs={fb.autoCloseMs}
+    />
     </View>
   );
 }
@@ -231,4 +257,10 @@ const styles = StyleSheet.create({
     borderRadius: 10, marginBottom: 8, elevation: 1,
   },
   menuLabel: { flex: 1, fontWeight: '600' },
+  logoutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, marginTop: 16, paddingVertical: 14,
+    borderRadius: 10, borderWidth: 1.5, backgroundColor: 'transparent',
+  },
+  logoutText: { color: '#dc2626', fontWeight: '700' },
 });

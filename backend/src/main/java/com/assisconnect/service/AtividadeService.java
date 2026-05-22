@@ -31,12 +31,10 @@ public class AtividadeService {
 
         if (!existentes.isEmpty()) {
             Atividade existente = existentes.get(existentes.size() - 1);
-            for (var novaPresenca : novaAtividade.getPresentes()) {
-                boolean jaExiste = existente.getPresentes().stream()
-                        .anyMatch(p -> p.getNome().equalsIgnoreCase(novaPresenca.getNome()));
-                if (!jaExiste) {
-                    existente.getPresentes().add(novaPresenca);
-                }
+            existente.setHoraRegistro(novaAtividade.getHoraRegistro());
+            existente.getPresentes().clear();
+            if (novaAtividade.getPresentes() != null) {
+                existente.getPresentes().addAll(novaAtividade.getPresentes());
             }
             return repository.save(existente);
         }
@@ -60,6 +58,10 @@ public class AtividadeService {
 
     public List<Atividade> buscarAtividadesDeHoje() {
         return repository.findByDataRegistro(LocalDate.now().toString());
+    }
+
+    public int contarDiasComRegistroNoPeriodo(String inicio, String fim) {
+        return repository.findDatasDistintasNoPeriodo(inicio, fim).size();
     }
 
     public void deletar(Long id) {

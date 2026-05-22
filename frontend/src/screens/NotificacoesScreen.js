@@ -6,11 +6,13 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../components/ScreenHeader';
 import Toast from '../components/Toast';
+import FeedbackDialog from '../components/FeedbackDialog';
+import useFeedback from '../hooks/useFeedback';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { getIdosos } from '../services/idosoService';
 import {
   pedirPermissao, cancelarTodas, agendarLembreteDiario,
-  agendarAniversarios, salvarConfig, lerConfig, isSuportado, testarAgora,
+  agendarAniversarios, salvarConfig, lerConfig, isSuportado,
 } from '../services/notificacaoService';
 
 const HORAS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
@@ -26,8 +28,8 @@ export default function NotificacoesScreen() {
   const [minuto, setMinuto] = useState('00');
   const [pendente, setPendente] = useState(false);
   const [aplicando, setAplicando] = useState(false);
-  const [testando, setTestando] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const fb = useFeedback();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   function showToast(message, type = 'info') {
@@ -80,7 +82,10 @@ export default function NotificacoesScreen() {
       setAplicando(true);
       const permitido = await pedirPermissao();
       if (!permitido) {
-        showToast('Permissão de notificação negada. Habilite nas configurações do dispositivo.', 'error');
+        fb.error(
+          'Permissão negada',
+          'Habilite as notificações nas configurações do dispositivo para receber lembretes.',
+        );
         return;
       }
 
@@ -103,23 +108,10 @@ export default function NotificacoesScreen() {
 
       await salvarConfig({ lembreteDiarioAtivo, aniversariosAtivo, horaLembrete: h, minutoLembrete: m });
       setPendente(false);
-      showToast('Configurações salvas e aplicadas!', 'success');
+      fb.success('Configurações aplicadas!', 'Suas preferências de notificação foram salvas.', 1500);
     } finally {
       setAplicando(false);
     }
-  }
-
-  async function testar() {
-    setTestando(true);
-    const r = await testarAgora('AssisConnect', 'As notificações estão funcionando! ✓');
-    if (r.sucesso) {
-      showToast(Platform.OS === 'web'
-        ? 'Push enviada! Verifique as notificações do navegador.'
-        : 'Push agendada! Aparece em 2 segundos.', 'success');
-    } else {
-      showToast(r.motivo || 'Erro ao enviar notificação', 'error');
-    }
-    setTestando(false);
   }
 
   const ativoCount = [lembreteDiarioAtivo, aniversariosAtivo].filter(Boolean).length;
@@ -245,23 +237,9 @@ export default function NotificacoesScreen() {
           </Pressable>
         </Animated.View>
 
-        {/* Botão Testar */}
-        <Pressable
-          style={[styles.btnDebug, { backgroundColor: c.white, borderColor: c.primary, opacity: testando ? 0.7 : 1 }]}
-          onPress={testar}
-          disabled={testando}
-        >
-          <Feather name="zap" size={16} color={c.primary} />
-          <Text style={[styles.btnDebugTxt, { color: c.primary }]}>
-            {testando ? 'Enviando...' : 'Testar notificação agora'}
-          </Text>
-        </Pressable>
-
         <View style={[styles.infoBox, { backgroundColor: c.surface, borderColor: c.border }]}>
           <Feather name="info" size={13} color={c.textSecondary} />
           <Text style={[styles.infoText, { color: c.textSecondary }]}>
-            O botão de teste dispara um toast imediato <Text style={{ fontWeight: '700' }}>e</Text> uma push nativa
-            {Platform.OS === 'web' ? ' no navegador' : ' em 2 segundos'}.
             Os lembretes só funcionam com o app aberto.
           </Text>
         </View>
@@ -273,6 +251,14 @@ export default function NotificacoesScreen() {
         message={toast.message}
         type={toast.type}
         onHide={() => setToast(t => ({ ...t, visible: false }))}
+      />
+      <FeedbackDialog
+        visible={fb.visible}
+        onClose={fb.close}
+        type={fb.type}
+        title={fb.title}
+        message={fb.message}
+        autoCloseMs={fb.autoCloseMs}
       />
     </View>
   );

@@ -12,6 +12,9 @@ import ScreenHeader from '../components/ScreenHeader';
 import DateInput from '../components/DateInput';
 import BottomSheet from '../components/BottomSheet';
 import Toast from '../components/Toast';
+import FAB from '../components/FAB';
+import FeedbackDialog from '../components/FeedbackDialog';
+import useFeedback from '../hooks/useFeedback';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -39,9 +42,12 @@ export default function RegistroDiarioScreen() {
   const [novaAtividade, setNovaAtividade] = useState('');
   const [showConsulta, setShowConsulta] = useState(false);
   const [consultaData, setConsultaData] = useState([]);
+  const [consultaDate, setConsultaDate] = useState(new Date().toISOString().split('T')[0]);
+  const consultaPickerRef = useRef(null);
 
-  // Toast
+  // Toast (validacao de form) + FeedbackDialog (resultados importantes)
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const fb = useFeedback();
 
   function showToast(message, isError = false) {
     setToast({ visible: true, message, type: isError ? 'error' : 'success' });
@@ -69,8 +75,8 @@ export default function RegistroDiarioScreen() {
         const list = (idososRes.value.data || []).filter((i) => !i.inativo && !i.falecido);
         setIdosos(list);
       }
-    } catch (e) {
-      console.log('[REGISTRO] Erro:', e);
+    } catch {
+      // sem ação adicional — toast/empty state cobre a UX
     } finally {
       setLoading(false);
     }
@@ -79,23 +85,29 @@ export default function RegistroDiarioScreen() {
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
   // Atualiza presenças ao trocar data ou atividade
-  const loadPresencas = useCallback(async (data, atividade) => {
+  // Default: todos presentes. Se já há registro salvo, usa o registro.
+  const loadPresencas = useCallback(async (data, atividade, idososList) => {
     if (!data || !atividade) { setPresentes(new Set()); return; }
+    const todosPresentes = new Set(idososList.map((i) => i.nome));
     try {
       const res = await getAtividades({ data, nome: atividade });
       const registros = res.data || [];
+      if (registros.length === 0) {
+        setPresentes(todosPresentes);
+        return;
+      }
       const nomes = new Set(
         registros.flatMap((r) => (r.presentes || []).map((p) => p.nome))
       );
       setPresentes(nomes);
     } catch {
-      setPresentes(new Set());
+      setPresentes(todosPresentes);
     }
   }, []);
 
   useEffect(() => {
-    loadPresencas(selectedDate, selectedAtividade);
-  }, [selectedDate, selectedAtividade, loadPresencas]);
+    loadPresencas(selectedDate, selectedAtividade, idosos);
+  }, [selectedDate, selectedAtividade, idosos, loadPresencas]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -117,10 +129,6 @@ export default function RegistroDiarioScreen() {
       showToast('Selecione uma atividade.', true);
       return;
     }
-    if (presentes.size === 0) {
-      showToast('Selecione pelo menos um idoso.', true);
-      return;
-    }
 
     const agora = new Date();
     const hora = agora.toTimeString().split(' ')[0];
@@ -136,11 +144,15 @@ export default function RegistroDiarioScreen() {
         horaRegistro: hora,
         presentes: presentesList,
       });
-      showToast(`${presentesList.length} presença(s) registrada(s)!`);
+      fb.success(
+        'Presença registrada!',
+        `${presentesList.length} idoso(s) marcado(s) presente(s) em ${selectedAtividade}.`,
+        1600,
+      );
       loadData();
-      loadPresencas(selectedDate, selectedAtividade);
+      loadPresencas(selectedDate, selectedAtividade, idosos);
     } catch {
-      showToast('Não foi possível salvar.', true);
+      fb.error('Não foi possível salvar', 'Verifique sua conexão e tente novamente.');
     }
   }
 
@@ -158,23 +170,28 @@ export default function RegistroDiarioScreen() {
       setShowNewAtiv(false);
       loadData();
     } catch {
-      Alert.alert('Erro', 'Não foi possível criar atividade.');
+      fb.error('Erro ao criar atividade', 'Tente novamente em alguns instantes.');
     }
   }
 
-  async function handleConsulta() {
+  function abrirConsulta() {
     if (!selectedAtividade) {
       showToast('Selecione uma atividade.', true);
       return;
     }
+    consultaPickerRef.current?.open();
+  }
+
+  async function handleConsulta(dataEscolhida) {
+    setConsultaDate(dataEscolhida);
     try {
-      const res = await getAtividades({ data: selectedDate, nome: selectedAtividade });
+      const res = await getAtividades({ data: dataEscolhida, nome: selectedAtividade });
       const data = res.data || [];
       const allPresentes = data.flatMap((a) => a.presentes || []);
       setConsultaData(allPresentes);
       setShowConsulta(true);
     } catch {
-      Alert.alert('Erro', 'Não foi possível consultar.');
+      fb.error('Erro ao consultar', 'Não foi possível buscar os registros.');
     }
   }
 
@@ -246,10 +263,16 @@ export default function RegistroDiarioScreen() {
               <Feather name="plus-circle" size={14} color={c.primary} />
               <Text style={[styles.actionBtnText, { color: c.primary, fontSize: scale(12) }]}>Nova atividade</Text>
             </Pressable>
-            <Pressable style={[styles.actionBtn, { backgroundColor: c.surface, borderColor: c.border }]} onPress={handleConsulta}>
+            <Pressable style={[styles.actionBtn, { backgroundColor: c.surface, borderColor: c.border }]} onPress={abrirConsulta}>
               <Feather name="eye" size={14} color={c.primary} />
               <Text style={[styles.actionBtnText, { color: c.primary, fontSize: scale(12) }]}>Consultar registro</Text>
             </Pressable>
+            <DateInput
+              ref={consultaPickerRef}
+              value={consultaDate}
+              onChange={handleConsulta}
+              triggerless
+            />
           </View>
         </View>
 
@@ -268,66 +291,78 @@ export default function RegistroDiarioScreen() {
               </Text>
             </View>
           ) : (
-            filteredIdosos.map((idoso) => {
-              const marcado = presentes.has(idoso.nome);
-              return (
-                <Pressable
-                  key={idoso.id}
-                  style={[
-                    styles.idosoRow,
-                    { borderColor: c.border },
-                    marcado && { backgroundColor: c.surface, borderColor: c.primary },
-                  ]}
-                  onPress={() => togglePresente(idoso.nome)}
-                >
-                  {idoso.fotoUrl ? (
-                    <Image source={{ uri: idoso.fotoUrl }} style={styles.avatar} />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: marcado ? c.primary : c.surface }]}>
-                      <Feather name="user" size={16} color={marcado ? '#fff' : c.textSecondary} />
+            <View style={styles.grid}>
+              {filteredIdosos.map((idoso) => {
+                const marcado = presentes.has(idoso.nome);
+                return (
+                  <Pressable
+                    key={idoso.id}
+                    style={styles.gridCard}
+                    onPress={() => togglePresente(idoso.nome)}
+                  >
+                    <View style={[styles.gridAvatarWrap, !marcado && styles.gridAvatarAbsent]}>
+                      {idoso.fotoUrl ? (
+                        <Image source={{ uri: idoso.fotoUrl }} style={styles.gridAvatar} />
+                      ) : (
+                        <View style={[styles.gridAvatar, styles.avatarPlaceholder, { backgroundColor: c.surface, borderColor: c.border, borderWidth: 1 }]}>
+                          <Feather name="user" size={28} color={c.textSecondary} />
+                        </View>
+                      )}
+                      <View
+                        style={[
+                          styles.gridBadge,
+                          { borderColor: c.white },
+                          marcado
+                            ? { backgroundColor: c.success || '#22c55e' }
+                            : { backgroundColor: c.danger || '#e5302a' },
+                        ]}
+                      >
+                        <Feather name={marcado ? 'check' : 'x'} size={12} color="#fff" />
+                      </View>
                     </View>
-                  )}
-                  <Text style={[styles.idosoName, { color: c.textPrimary, fontSize: scale(14), fontWeight: marcado ? '700' : '400' }]}>
-                    {idoso.nome}
-                  </Text>
-                  {marcado ? (
-                    <View style={[styles.badge, { backgroundColor: c.primary }]}>
-                      <Feather name="check" size={13} color="#fff" />
-                      <Text style={[styles.badgeText, { fontSize: scale(11) }]}>Presente</Text>
-                    </View>
-                  ) : (
-                    <View style={[styles.badge, { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }]}>
-                      <Text style={[styles.badgeTextInactive, { fontSize: scale(11), color: c.textSecondary }]}>Ausente</Text>
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })
+                    <Text
+                      style={[
+                        styles.gridName,
+                        {
+                          color: marcado ? c.textPrimary : c.textSecondary,
+                          fontSize: scale(12),
+                          fontWeight: marcado ? '600' : '400',
+                        },
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {idoso.nome}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           )}
         </View>
       </ScrollView>
 
-      {/* FAB — Salvar */}
-      <Pressable
-        style={[
-          styles.fab,
-          { backgroundColor: totalPresentes > 0 ? c.primary : c.inactive },
-        ]}
+      <FAB
+        icon="check"
         onPress={handleSave}
-      >
-        <Feather name="check" size={24} color="#fff" />
-        {totalPresentes > 0 && (
-          <View style={[styles.fabBadge, { backgroundColor: '#e5302a', borderColor: c.surface }]}>
-            <Text style={styles.fabBadgeText}>{totalPresentes}</Text>
-          </View>
-        )}
-      </Pressable>
+        color={totalPresentes > 0 ? c.primary : c.inactive}
+        badge={totalPresentes}
+        accessibilityLabel="Salvar registro de presença"
+      />
 
       <Toast
         visible={toast.visible}
         message={toast.message}
         type={toast.type}
         onHide={() => setToast(t => ({ ...t, visible: false }))}
+      />
+
+      <FeedbackDialog
+        visible={fb.visible}
+        onClose={fb.close}
+        type={fb.type}
+        title={fb.title}
+        message={fb.message}
+        autoCloseMs={fb.autoCloseMs}
       />
 
       {/* Modal: selecionar atividade */}
@@ -403,7 +438,7 @@ export default function RegistroDiarioScreen() {
         <View style={[styles.modalContent, { backgroundColor: c.white }]}>
           <View style={[styles.modalHeader, { borderBottomColor: c.border }]}>
             <Text style={[styles.modalTitle, { color: c.textPrimary, fontSize: scale(17) }]}>
-              Presenças — {selectedAtividade}
+              {selectedAtividade} — {formatDateLabel(consultaDate)}
             </Text>
             <Pressable onPress={() => setShowConsulta(false)} hitSlop={8}>
               <Feather name="x" size={20} color={c.textSecondary} />
@@ -470,6 +505,29 @@ const styles = StyleSheet.create({
   },
   avatar: { width: 38, height: 38, borderRadius: 19 },
   avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+
+  hint: { fontStyle: 'italic', marginBottom: 4 },
+  grid: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    justifyContent: 'flex-start', marginTop: 4,
+  },
+  gridCard: {
+    width: '33.33%', alignItems: 'center',
+    paddingVertical: 10, paddingHorizontal: 4,
+  },
+  gridAvatarWrap: { position: 'relative' },
+  gridAvatarAbsent: { opacity: 0.45 },
+  gridAvatar: { width: 70, height: 70, borderRadius: 35 },
+  gridBadge: {
+    position: 'absolute', bottom: -2, right: -2,
+    width: 22, height: 22, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2,
+  },
+  gridName: {
+    textAlign: 'center', marginTop: 8,
+    minHeight: 32,
+  },
   idosoName: { flex: 1 },
   badge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -484,22 +542,6 @@ const styles = StyleSheet.create({
   input: {
     borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1,
   },
-
-  // FAB
-  fab: {
-    position: 'absolute', bottom: 20, right: 20,
-    width: 56, height: 56, borderRadius: 28,
-    alignItems: 'center', justifyContent: 'center',
-    elevation: 5,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
-  },
-  fabBadge: {
-    position: 'absolute', top: -2, right: -2,
-    minWidth: 22, height: 22, borderRadius: 11,
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 4, borderWidth: 2,
-  },
-  fabBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { borderRadius: 20 },

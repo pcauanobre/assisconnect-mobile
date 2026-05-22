@@ -1,27 +1,53 @@
-import React from 'react';
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Text, Image, Pressable, StyleSheet, View, Animated, Easing } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAccessibility } from '../contexts/AccessibilityContext';
+import { calcularIdade } from '../utils/helpers';
 
-export default function IdosoCard({ idoso, onView, onEdit, onDelete }) {
+function ActionBtn({ icon, color, bg, onPress, label }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  return (
+    <Pressable
+      onPressIn={() => Animated.spring(scale, { toValue: 0.88, useNativeDriver: true }).start()}
+      onPressOut={() => Animated.spring(scale, { toValue: 1, friction: 4, useNativeDriver: true }).start()}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Animated.View style={[styles.actionBtn, { backgroundColor: bg, transform: [{ scale }] }]}>
+        <Feather name={icon} size={16} color={color} />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+export default function IdosoCard({ idoso, onView, onEdit, onDelete, index = 0 }) {
   const { activeColors: c, scale } = useAccessibility();
+  const enter = useRef(new Animated.Value(0)).current;
 
-  function calcularIdade(dataNasc) {
-    if (!dataNasc) return '?';
-    const hoje = new Date();
-    const nasc = new Date(dataNasc);
-    let idade = hoje.getFullYear() - nasc.getFullYear();
-    const m = hoje.getMonth() - nasc.getMonth();
-    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
-    return idade;
-  }
+  useEffect(() => {
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 320,
+      delay: Math.min(index, 8) * 40,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [enter, index]);
 
   const isInactive = idoso.inativo || idoso.falecido;
   const statusLabel = idoso.falecido ? 'Falecido' : idoso.inativo ? 'Inativo' : 'Ativo';
   const statusColor = idoso.falecido ? c.textSecondary : idoso.inativo ? '#F59E0B' : c.success;
+  const translateY = enter.interpolate({ inputRange: [0, 1], outputRange: [12, 0] });
 
   return (
-    <View style={[styles.card, { backgroundColor: c.white }, isInactive && styles.cardInactive]}>
+    <Animated.View
+      style={[
+        styles.card,
+        { backgroundColor: c.white, opacity: enter, transform: [{ translateY }] },
+        isInactive && styles.cardInactive,
+      ]}
+    >
       {idoso.fotoUrl ? (
         <Image source={{ uri: idoso.fotoUrl }} style={styles.photo} />
       ) : (
@@ -40,17 +66,11 @@ export default function IdosoCard({ idoso, onView, onEdit, onDelete }) {
       </View>
 
       <View style={styles.actions}>
-        <Pressable onPress={onView} style={[styles.actionBtn, { backgroundColor: c.surface }]}>
-          <Feather name="eye" size={16} color={c.primary} />
-        </Pressable>
-        <Pressable onPress={onEdit} style={[styles.actionBtn, { backgroundColor: c.surface }]}>
-          <Feather name="edit-2" size={16} color={c.primary} />
-        </Pressable>
-        <Pressable onPress={onDelete} style={[styles.actionBtn, { backgroundColor: c.surface }]}>
-          <Feather name="trash-2" size={16} color={c.danger} />
-        </Pressable>
+        <ActionBtn icon="eye"     color={c.primary} bg={c.surface} onPress={onView}   label="Ver detalhes" />
+        <ActionBtn icon="edit-2"  color={c.primary} bg={c.surface} onPress={onEdit}   label="Editar" />
+        <ActionBtn icon="trash-2" color={c.danger}  bg={c.surface} onPress={onDelete} label="Excluir" />
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

@@ -7,11 +7,16 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { register } from '../../services/authService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 import Toast from '../../components/Toast';
+import FeedbackDialog from '../../components/FeedbackDialog';
+import useFeedback from '../../hooks/useFeedback';
 
 export default function RegisterScreen({ navigation }) {
   const { activeColors: c, scale } = useAccessibility();
+  const { login } = useAuth();
+  const [nome, setNome] = useState('');
   const [usuario, setUsuario] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -20,6 +25,7 @@ export default function RegisterScreen({ navigation }) {
   const [showConfirmar, setShowConfirmar] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const fb = useFeedback();
 
   function showToast(message, type = 'info') {
     setToast({ visible: true, message, type });
@@ -30,7 +36,7 @@ export default function RegisterScreen({ navigation }) {
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const cardY = useRef(new Animated.Value(60)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
-  const fields = useRef([0, 1, 2, 3, 4, 5].map(() => new Animated.Value(0))).current;
+  const fields = useRef([0, 1, 2, 3, 4, 5, 6].map(() => new Animated.Value(0))).current;
   const shakeX = useRef(new Animated.Value(0)).current;
 
   function runEntrance() {
@@ -82,15 +88,26 @@ export default function RegisterScreen({ navigation }) {
     }
     try {
       setLoading(true);
-      await register(usuario.trim(), senha.trim(), email.trim().toLowerCase());
+      const usuarioTrim = usuario.trim();
+      const emailTrim = email.trim().toLowerCase();
+      const senhaTrim = senha.trim();
+      const nomeTrim = nome.trim();
+      await register(usuarioTrim, senhaTrim, emailTrim, false, nomeTrim);
       showToast('Conta criada! Entrando...', 'success');
-      setTimeout(() => navigation.goBack(), 1200);
+      // Auto-login: AppNavigator detecta user e troca pra MainTabs sozinho
+      try {
+        await login(emailTrim, senhaTrim);
+      } catch {
+        // Se auto-login falhar, volta pro login manual
+        setTimeout(() => navigation.goBack(), 800);
+      }
     } catch (err) {
       shake();
-      const msg = err?.response?.status === 409
-        ? 'Usuário ou email já cadastrado'
-        : err?.response?.data?.message || 'Sem conexão com o servidor';
-      showToast(msg, 'error');
+      const is409 = err?.response?.status === 409;
+      fb.error(
+        is409 ? 'Conta já existe' : 'Não foi possível cadastrar',
+        is409 ? 'Já existe um usuário com esse email ou nome de usuário.' : (err?.response?.data?.message || 'Sem conexão com o servidor.'),
+      );
     } finally {
       setLoading(false);
     }
@@ -130,10 +147,25 @@ export default function RegisterScreen({ navigation }) {
         >
           <Text style={[styles.title, { color: c.textPrimary, fontSize: scale(20) }]}>Cadastro</Text>
 
-          {/* Usuário */}
+          {/* Nome */}
           <Animated.View style={fieldStyle(0)}>
             <View style={[styles.inputWrapper, { backgroundColor: c.white, borderColor: c.border }]}>
               <Feather name="user" size={18} color={c.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                value={nome}
+                onChangeText={setNome}
+                placeholder="Nome completo"
+                returnKeyType="next"
+                style={[styles.input, { color: c.textPrimary, fontSize: scale(14) }]}
+                placeholderTextColor={c.textSecondary}
+              />
+            </View>
+          </Animated.View>
+
+          {/* Usuário */}
+          <Animated.View style={fieldStyle(1)}>
+            <View style={[styles.inputWrapper, { backgroundColor: c.white, borderColor: c.border }]}>
+              <Feather name="at-sign" size={18} color={c.textSecondary} style={styles.inputIcon} />
               <TextInput
                 value={usuario}
                 onChangeText={setUsuario}
@@ -147,7 +179,7 @@ export default function RegisterScreen({ navigation }) {
           </Animated.View>
 
           {/* Email */}
-          <Animated.View style={fieldStyle(1)}>
+          <Animated.View style={fieldStyle(2)}>
             <View style={[styles.inputWrapper, { backgroundColor: c.white, borderColor: c.border }]}>
               <Feather name="mail" size={18} color={c.textSecondary} style={styles.inputIcon} />
               <TextInput
@@ -164,7 +196,7 @@ export default function RegisterScreen({ navigation }) {
           </Animated.View>
 
           {/* Senha */}
-          <Animated.View style={fieldStyle(2)}>
+          <Animated.View style={fieldStyle(3)}>
             <View style={[styles.inputWrapper, { backgroundColor: c.white, borderColor: c.border }]}>
               <Feather name="lock" size={18} color={c.textSecondary} style={styles.inputIcon} />
               <TextInput
@@ -183,7 +215,7 @@ export default function RegisterScreen({ navigation }) {
           </Animated.View>
 
           {/* Confirmar senha */}
-          <Animated.View style={fieldStyle(3)}>
+          <Animated.View style={fieldStyle(4)}>
             <View style={[styles.inputWrapper, { backgroundColor: c.white, borderColor: c.border }]}>
               <Feather name="lock" size={18} color={c.textSecondary} style={styles.inputIcon} />
               <TextInput
@@ -203,7 +235,7 @@ export default function RegisterScreen({ navigation }) {
           </Animated.View>
 
           {/* Botão */}
-          <Animated.View style={fieldStyle(4)}>
+          <Animated.View style={fieldStyle(5)}>
             <Pressable
               style={({ pressed }) => [
                 styles.btn,
@@ -221,7 +253,7 @@ export default function RegisterScreen({ navigation }) {
           </Animated.View>
 
           {/* Link */}
-          <Animated.View style={fieldStyle(5)}>
+          <Animated.View style={fieldStyle(6)}>
             <Pressable onPress={() => navigation.goBack()}>
               <Text style={[styles.link, { color: c.textSecondary, fontSize: scale(14) }]}>Já tenho conta — Entrar</Text>
             </Pressable>
@@ -234,6 +266,14 @@ export default function RegisterScreen({ navigation }) {
         message={toast.message}
         type={toast.type}
         onHide={() => setToast(t => ({ ...t, visible: false }))}
+      />
+      <FeedbackDialog
+        visible={fb.visible}
+        onClose={fb.close}
+        type={fb.type}
+        title={fb.title}
+        message={fb.message}
+        autoCloseMs={fb.autoCloseMs}
       />
     </KeyboardAvoidingView>
   );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, ScrollView, Pressable, StyleSheet,
-  ActivityIndicator, Image, Switch, Alert,
+  ActivityIndicator, Image, Switch,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -9,6 +9,9 @@ import { getIdoso, createIdoso, updateIdoso, deleteIdoso } from '../../services/
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 import DateInput from '../../components/DateInput';
 import Toast from '../../components/Toast';
+import FeedbackDialog from '../../components/FeedbackDialog';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import useFeedback from '../../hooks/useFeedback';
 
 const SEXO_OPTIONS = ['Masculino', 'Feminino', 'Outro'];
 const ESTADO_CIVIL_OPTIONS = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'Outro'];
@@ -22,6 +25,8 @@ export default function IdosoFormScreen({ route, navigation }) {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
+  const fb = useFeedback();
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(false);
   const [foto, setFoto] = useState('');
   const [form, setForm] = useState({
     nome: '', sexo: 'Masculino', dataNascimento: '', estadoCivil: 'Solteiro(a)',
@@ -48,8 +53,9 @@ export default function IdosoFormScreen({ route, navigation }) {
         inativo: d.inativo || false, falecido: d.falecido || false,
       });
       setFoto(d.fotoUrl || '');
-    } catch { showToast('Não foi possível carregar os dados.', 'error'); }
-    finally { setLoading(false); }
+    } catch {
+      fb.error('Erro ao carregar', 'Não foi possível buscar os dados do idoso.');
+    } finally { setLoading(false); }
   }
 
   function updateField(key, value) {
@@ -72,23 +78,29 @@ export default function IdosoFormScreen({ route, navigation }) {
       const payload = { ...form, fotoUrl: foto || '', dataCriacao: isEdit ? undefined : new Date().toISOString().split('T')[0] };
       if (isEdit) await updateIdoso(editId, payload);
       else await createIdoso(payload);
-      showToast(isEdit ? 'Idoso atualizado com sucesso!' : 'Idoso cadastrado com sucesso!', 'success');
-      setTimeout(() => navigation.goBack(), 1000);
-    } catch { showToast('Não foi possível salvar.', 'error'); }
-    finally { setSaving(false); }
+      fb.success(
+        isEdit ? 'Idoso atualizado!' : 'Idoso cadastrado!',
+        isEdit ? 'As alterações foram salvas.' : `${form.nome} foi adicionado(a) ao sistema.`,
+        1500,
+      );
+      setTimeout(() => navigation.goBack(), 1600);
+    } catch {
+      fb.error('Não foi possível salvar', 'Verifique os dados e tente novamente.');
+    } finally { setSaving(false); }
   }
 
   function confirmarExcluir() {
-    Alert.alert('Excluir idoso', `Deseja excluir "${form.nome}"? Esta ação não pode ser desfeita.`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => {
-        try {
-          await deleteIdoso(editId);
-          showToast('Idoso excluído.', 'success');
-          setTimeout(() => navigation.goBack(), 800);
-        } catch { showToast('Falha ao excluir.', 'error'); }
-      }},
-    ]);
+    setConfirmandoExcluir(true);
+  }
+
+  async function executarExclusao() {
+    try {
+      await deleteIdoso(editId);
+      fb.success('Idoso excluído', `${form.nome} foi removido(a) do sistema.`, 1300);
+      setTimeout(() => navigation.goBack(), 1400);
+    } catch {
+      fb.error('Falha ao excluir', 'Tente novamente em alguns instantes.');
+    }
   }
 
   const inputStyle = { backgroundColor: c.white, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: c.border, fontSize: 14, color: c.textPrimary };
@@ -224,6 +236,24 @@ export default function IdosoFormScreen({ route, navigation }) {
     </ScrollView>
     <Toast visible={toast.visible} message={toast.message} type={toast.type}
       onHide={() => setToast(t => ({ ...t, visible: false }))} />
+    <FeedbackDialog
+      visible={fb.visible}
+      onClose={fb.close}
+      type={fb.type}
+      title={fb.title}
+      message={fb.message}
+      autoCloseMs={fb.autoCloseMs}
+    />
+    <ConfirmDialog
+      visible={confirmandoExcluir}
+      onClose={() => setConfirmandoExcluir(false)}
+      onConfirm={executarExclusao}
+      title="Excluir idoso?"
+      message={`Esta ação não pode ser desfeita. ${form.nome} e todos os seus registros (saúde, medicamentos, visitas) serão removidos.`}
+      confirmLabel="Excluir"
+      variant="danger"
+      icon="trash-2"
+    />
     </View>
   );
 }

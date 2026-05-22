@@ -9,6 +9,8 @@ import CardapioScreen from '../screens/CardapioScreen';
 import RegistroDiarioScreen from '../screens/RegistroDiarioScreen';
 import RelatorioMensalScreen from '../screens/RelatorioMensalScreen';
 import { useAccessibility } from '../contexts/AccessibilityContext';
+import { useDebug } from '../contexts/DebugContext';
+import UserHeader from '../components/UserHeader';
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -23,11 +25,13 @@ const TAB_ICONS = {
 export default function MainTabs() {
   const insets = useSafeAreaInsets();
   const { activeColors } = useAccessibility();
+  const { notifyHomeTap } = useDebug();
 
   const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 10) : insets.bottom;
 
   return (
     <View style={{ flex: 1, backgroundColor: activeColors.surface }}>
+      <UserHeader />
       <Tab.Navigator
         initialRouteName="Dashboard"
         tabBarPosition="bottom"
@@ -56,7 +60,12 @@ export default function MainTabs() {
       >
         <Tab.Screen name="Idosos" component={IdososStack} options={{ headerShown: false }} />
         <Tab.Screen name="Cardapio" component={CardapioScreen} options={{ title: 'Cardapio' }} />
-        <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ headerShown: false, title: 'Inicio' }} />
+        <Tab.Screen
+          name="Dashboard"
+          component={DashboardScreen}
+          options={{ headerShown: false, title: 'Inicio' }}
+          listeners={{ tabPress: () => notifyHomeTap() }}
+        />
         <Tab.Screen name="Registro" component={RegistroDiarioScreen} options={{ title: 'Registro' }} />
         <Tab.Screen name="Relatorios" component={RelatorioMensalScreen} options={{ title: 'Relatorios' }} />
       </Tab.Navigator>

@@ -39,6 +39,13 @@ public class AtividadeController {
         return service.buscarAtividadesDeHoje();
     }
 
+    @GetMapping("/dias-registrados")
+    public int diasRegistrados(
+            @RequestParam String inicio,
+            @RequestParam String fim) {
+        return service.contarDiasComRegistroNoPeriodo(inicio, fim);
+    }
+
     @DeleteMapping("/{id}")
     public void deletar(@PathVariable Long id) {
         service.deletar(id);

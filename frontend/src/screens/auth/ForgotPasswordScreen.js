@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, Alert,
+  View, Text, TextInput, Pressable, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
   Animated, Easing,
 } from 'react-native';
@@ -8,6 +8,8 @@ import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { resetarSenha } from '../../services/authService';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
+import FeedbackDialog from '../../components/FeedbackDialog';
+import useFeedback from '../../hooks/useFeedback';
 
 const STEPS = [
   { label: 'Email', icon: 'mail' },
@@ -25,6 +27,7 @@ export default function ForgotPasswordScreen({ navigation }) {
   const [showNova, setShowNova] = useState(false);
   const [showConfirmar, setShowConfirmar] = useState(false);
   const [loading, setLoading] = useState(false);
+  const fb = useFeedback();
 
   // Entrada
   const logoScale = useRef(new Animated.Value(0)).current;
@@ -84,7 +87,7 @@ export default function ForgotPasswordScreen({ navigation }) {
 
   async function handleEnviarCodigo() {
     const emailNorm = email.trim().toLowerCase();
-    if (!emailNorm) { shake(); Alert.alert('Atenção', 'Informe seu email.'); return; }
+    if (!emailNorm) { shake(); fb.warn('Email obrigatório', 'Informe seu email para continuar.'); return; }
     try {
       setLoading(true);
       await new Promise(r => setTimeout(r, 800));
@@ -96,23 +99,22 @@ export default function ForgotPasswordScreen({ navigation }) {
   }
 
   function handleValidarCodigo() {
-    if (!codigo.trim()) { shake(); Alert.alert('Atenção', 'Informe o código.'); return; }
+    if (!codigo.trim()) { shake(); fb.warn('Código obrigatório', 'Informe o código recebido.'); return; }
     if (codigo.trim() === '123456') goToStep(3);
-    else { shake(); Alert.alert('Código inválido', 'Para teste, use: 123456'); }
+    else { shake(); fb.error('Código inválido', 'Para teste, use: 123456'); }
   }
 
   async function handleResetarSenha() {
-    if (!novaSenha.trim()) { shake(); Alert.alert('Atenção', 'Informe a nova senha.'); return; }
-    if (novaSenha !== confirmarSenha) { shake(); Alert.alert('Atenção', 'As senhas não conferem.'); return; }
+    if (!novaSenha.trim()) { shake(); fb.warn('Senha obrigatória', 'Informe a nova senha.'); return; }
+    if (novaSenha !== confirmarSenha) { shake(); fb.warn('Senhas diferentes', 'A confirmação não bate com a nova senha.'); return; }
     try {
       setLoading(true);
       await resetarSenha(email, novaSenha.trim());
-      Alert.alert('Sucesso', 'Senha alterada com sucesso!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      fb.success('Senha alterada!', 'Você já pode entrar com a nova senha.', 1500);
+      setTimeout(() => navigation.goBack(), 1700);
     } catch (err) {
       shake();
-      Alert.alert('Erro', err?.response?.data?.message || 'Erro ao resetar senha.');
+      fb.error('Não foi possível alterar', err?.response?.data?.message || 'Tente novamente em alguns instantes.');
     } finally {
       setLoading(false);
     }
@@ -302,6 +304,15 @@ export default function ForgotPasswordScreen({ navigation }) {
           </Pressable>
         </Animated.View>
       </ScrollView>
+
+      <FeedbackDialog
+        visible={fb.visible}
+        onClose={fb.close}
+        type={fb.type}
+        title={fb.title}
+        message={fb.message}
+        autoCloseMs={fb.autoCloseMs}
+      />
     </KeyboardAvoidingView>
   );
 }

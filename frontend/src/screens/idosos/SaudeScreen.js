@@ -1,10 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable,
-  TextInput, Alert, ScrollView,
+  TextInput, ScrollView,
 } from 'react-native';
 import BottomSheet from '../../components/BottomSheet';
 import Toast from '../../components/Toast';
+import FeedbackDialog from '../../components/FeedbackDialog';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import useFeedback from '../../hooks/useFeedback';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getRegistrosSaude, createRegistroSaude, deleteRegistroSaude } from '../../services/saudeService';
@@ -24,12 +27,14 @@ export default function SaudeScreen({ route }) {
   });
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
+  const fb = useFeedback();
+  const [excluirAlvo, setExcluirAlvo] = useState(null);
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
   async function load() {
     try { setLoading(true); const res = await getRegistrosSaude(idosoId); setRegistros(res.data); }
-    catch (e) { console.log('[SAUDE] Erro:', e); }
+    catch { /* mantém estado anterior */ }
     finally { setLoading(false); }
   }
 
@@ -51,16 +56,26 @@ export default function SaudeScreen({ route }) {
       };
       await createRegistroSaude(payload);
       setModalVisible(false);
-      showToast('Registro de saúde salvo!', 'success');
+      fb.success('Registro salvo!', 'O acompanhamento de saúde foi adicionado.', 1500);
       await load();
-    } catch { showToast('Falha ao salvar registro.', 'error'); }
+    } catch {
+      fb.error('Falha ao salvar', 'Verifique os dados e tente novamente.');
+    }
   }
 
   function confirmarExcluir(r) {
-    Alert.alert('Excluir registro', `Registro de ${r.data}?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => { await deleteRegistroSaude(r.id); await load(); } },
-    ]);
+    setExcluirAlvo(r);
+  }
+
+  async function executarExclusao() {
+    if (!excluirAlvo) return;
+    try {
+      await deleteRegistroSaude(excluirAlvo.id);
+      fb.success('Registro removido', `Registro de ${excluirAlvo.data} excluído.`, 1300);
+      await load();
+    } catch {
+      fb.error('Falha ao excluir', 'Tente novamente em alguns instantes.');
+    }
   }
 
   const pesos = registros.filter(r => r.peso != null).slice(0, 6).reverse();
@@ -191,6 +206,24 @@ export default function SaudeScreen({ route }) {
       </BottomSheet>
       <Toast visible={toast.visible} message={toast.message} type={toast.type}
         onHide={() => setToast(t => ({ ...t, visible: false }))} />
+      <FeedbackDialog
+        visible={fb.visible}
+        onClose={fb.close}
+        type={fb.type}
+        title={fb.title}
+        message={fb.message}
+        autoCloseMs={fb.autoCloseMs}
+      />
+      <ConfirmDialog
+        visible={!!excluirAlvo}
+        onClose={() => setExcluirAlvo(null)}
+        onConfirm={executarExclusao}
+        title="Excluir registro?"
+        message={excluirAlvo ? `Registro de saúde de ${excluirAlvo.data} será removido permanentemente.` : ''}
+        confirmLabel="Excluir"
+        variant="danger"
+        icon="trash-2"
+      />
     </View>
   );
 }

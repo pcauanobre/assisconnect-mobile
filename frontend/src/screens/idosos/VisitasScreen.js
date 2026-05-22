@@ -1,10 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable,
-  TextInput, Alert, ScrollView,
+  TextInput, ScrollView,
 } from 'react-native';
 import BottomSheet from '../../components/BottomSheet';
 import Toast from '../../components/Toast';
+import FeedbackDialog from '../../components/FeedbackDialog';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import useFeedback from '../../hooks/useFeedback';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getVisitasPorIdoso, createVisita, deleteVisita } from '../../services/visitaService';
@@ -24,12 +27,14 @@ export default function VisitasScreen({ route }) {
   const [form, setForm] = useState({ dataVisita: today, nomeVisitante: '', parentesco: 'Filho(a)', observacoes: '' });
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
+  const fb = useFeedback();
+  const [excluirAlvo, setExcluirAlvo] = useState(null);
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
   async function load() {
     try { setLoading(true); const res = await getVisitasPorIdoso(idosoId); setVisitas(res.data); }
-    catch (e) { console.log('[VISITAS] Erro:', e); }
+    catch { /* mantém estado anterior */ }
     finally { setLoading(false); }
   }
 
@@ -43,17 +48,26 @@ export default function VisitasScreen({ route }) {
     try {
       await createVisita({ ...form, idosoId });
       setModalVisible(false);
-      showToast('Visita registrada com sucesso!', 'success');
+      fb.success('Visita registrada!', `${form.nomeVisitante} foi adicionado ao histórico.`, 1500);
       await load();
+    } catch {
+      fb.error('Falha ao registrar', 'Tente novamente em alguns instantes.');
     }
-    catch { showToast('Falha ao registrar visita.', 'error'); }
   }
 
   function confirmarExcluir(v) {
-    Alert.alert('Excluir visita', `Visita de ${v.nomeVisitante}?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => { await deleteVisita(v.id); await load(); } },
-    ]);
+    setExcluirAlvo(v);
+  }
+
+  async function executarExclusao() {
+    if (!excluirAlvo) return;
+    try {
+      await deleteVisita(excluirAlvo.id);
+      fb.success('Visita removida', 'O registro foi excluído.', 1300);
+      await load();
+    } catch {
+      fb.error('Falha ao excluir', 'Tente novamente em alguns instantes.');
+    }
   }
 
   const diasDesdeUltima = visitas.length
@@ -150,6 +164,24 @@ export default function VisitasScreen({ route }) {
       </BottomSheet>
       <Toast visible={toast.visible} message={toast.message} type={toast.type}
         onHide={() => setToast(t => ({ ...t, visible: false }))} />
+      <FeedbackDialog
+        visible={fb.visible}
+        onClose={fb.close}
+        type={fb.type}
+        title={fb.title}
+        message={fb.message}
+        autoCloseMs={fb.autoCloseMs}
+      />
+      <ConfirmDialog
+        visible={!!excluirAlvo}
+        onClose={() => setExcluirAlvo(null)}
+        onConfirm={executarExclusao}
+        title="Excluir visita?"
+        message={excluirAlvo ? `A visita de ${excluirAlvo.nomeVisitante} em ${excluirAlvo.dataVisita} será removida.` : ''}
+        confirmLabel="Excluir"
+        variant="danger"
+        icon="trash-2"
+      />
     </View>
   );
 }

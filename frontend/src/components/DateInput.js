@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAccessibility } from '../contexts/AccessibilityContext';
@@ -32,9 +32,20 @@ function todayIso() {
   return toIso(t.getFullYear(), t.getMonth(), t.getDate());
 }
 
-export default function DateInput({ value, onChange, placeholder = 'DD/MM/AAAA', style, iconOnly, iconColor, iconSize = 22 }) {
+function DateInput({ value, onChange, placeholder = 'DD/MM/AAAA', style, iconOnly, iconColor, iconSize = 22, triggerless }, ref) {
   const { activeColors: c, scale } = useAccessibility();
   const [show, setShow] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    open: () => {
+      const d = parseDate(value);
+      setViewYear(d.getFullYear());
+      setViewMonth(d.getMonth());
+      setTempValue(value || '');
+      setShow(true);
+    },
+    close: () => setShow(false),
+  }));
 
   const initial = parseDate(value);
   const [viewYear, setViewYear] = useState(initial.getFullYear());
@@ -145,6 +156,10 @@ export default function DateInput({ value, onChange, placeholder = 'DD/MM/AAAA',
       </Pressable>
     </Modal>
   );
+
+  if (triggerless) {
+    return calendarModal;
+  }
 
   if (iconOnly) {
     return (
@@ -266,3 +281,5 @@ const styles = StyleSheet.create({
   },
   confirmText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });
+
+export default forwardRef(DateInput);

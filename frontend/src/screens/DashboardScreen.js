@@ -1,42 +1,26 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, RefreshControl, Pressable, Image,
+  View, Text, ScrollView, StyleSheet, RefreshControl, Pressable, Image, Animated, Easing,
 } from 'react-native';
-import BottomSheet from '../components/BottomSheet';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../contexts/AuthContext';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { getIdososCount, getAniversariantesDoMes } from '../services/idosoService';
 import { getCardapioHoje } from '../services/cardapioService';
-import { getAtividades, getAtividadesHoje } from '../services/atividadeService';
+import { getAtividadesHoje, getDiasComRegistro } from '../services/atividadeService';
 import { getUsuariosCount } from '../services/usuarioService';
 import { getIdososSemVisita } from '../services/visitaService';
-import { testarAgora, pedirPermissao, isSuportado } from '../services/notificacaoService';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StatCard from '../components/StatCard';
-import Toast from '../components/Toast';
-
-function saudacao() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Bom dia';
-  if (h < 18) return 'Boa tarde';
-  return 'Boa noite';
-}
+import { calcularIdade } from '../utils/helpers';
 
 export default function DashboardScreen({ navigation }) {
-  const { user, logout } = useAuth();
   const { activeColors: c, config, scale } = useAccessibility();
-  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ idosos: 0, aniversarios: 0, atividades: 0, colaboradores: 0 });
   const [menuHoje, setMenuHoje] = useState(null);
   const [aniversariantes, setAniversariantes] = useState([]);
   const [atividadesHoje, setAtividadesHoje] = useState([]);
   const [semVisita, setSemVisita] = useState([]);
-  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
-  const [debugModal, setDebugModal] = useState(false);
-  const [debugResult, setDebugResult] = useState('');
   const [diasRegistrados, setDiasRegistrados] = useState(0);
   const [totalDiasMes, setTotalDiasMes] = useState(0);
 
@@ -49,13 +33,18 @@ export default function DashboardScreen({ navigation }) {
       const hoje = new Date();
       const ano = hoje.getFullYear();
       const mes = hoje.getMonth() + 1;
+      const mm = String(mes).padStart(2, '0');
       const diaAtual = hoje.getDate();
       const diasNoMes = new Date(ano, mes, 0).getDate();
+      const inicio = `${ano}-${mm}-01`;
+      const fim = `${ano}-${mm}-${String(diaAtual).padStart(2, '0')}`;
 
-      const [idososRes, anivRes, menuRes, ativRes, usersRes, semVisRes] = await Promise.allSettled([
-        getIdososCount(), getAniversariantesDoMes(), getCardapioHoje(),
-        getAtividadesHoje(), getUsuariosCount(), getIdososSemVisita(30),
-      ]);
+      const [idososRes, anivRes, menuRes, ativRes, usersRes, semVisRes, diasRes] =
+        await Promise.allSettled([
+          getIdososCount(), getAniversariantesDoMes(), getCardapioHoje(),
+          getAtividadesHoje(), getUsuariosCount(), getIdososSemVisita(30),
+          getDiasComRegistro(inicio, fim),
+        ]);
 
       const idososCount = idososRes.status === 'fulfilled' ? idososRes.value.data : 0;
       const anivData    = anivRes.status  === 'fulfilled' ? anivRes.value.data  : [];
@@ -63,15 +52,7 @@ export default function DashboardScreen({ navigation }) {
       const ativData    = ativRes.status  === 'fulfilled' ? ativRes.value.data  : [];
       const usersCount  = usersRes.status === 'fulfilled' ? usersRes.value.data : 0;
       const semVisData  = semVisRes.status === 'fulfilled' ? semVisRes.value.data : [];
-
-      let registrados = 0;
-      for (let d = 1; d <= diaAtual; d++) {
-        const dataStr = `${ano}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        try {
-          const res = await getAtividades({ data: dataStr });
-          if ((res.data || []).length > 0) registrados++;
-        } catch {}
-      }
+      const registrados = diasRes.status === 'fulfilled' ? (diasRes.value.data ?? 0) : 0;
 
       setStats({ idosos: idososCount, aniversarios: anivData.length, atividades: ativData.length, colaboradores: usersCount });
       setMenuHoje(menuData);
@@ -80,8 +61,8 @@ export default function DashboardScreen({ navigation }) {
       setSemVisita(semVisData);
       setDiasRegistrados(registrados);
       setTotalDiasMes(diasNoMes);
-    } catch (e) {
-      console.log('[DASHBOARD] Erro:', e);
+    } catch {
+      // ignora — UI mostra valores 0 / vazios
     }
   }, []);
 
@@ -93,62 +74,26 @@ export default function DashboardScreen({ navigation }) {
     setRefreshing(false);
   }
 
-  function calcularIdade(dataNasc) {
-    if (!dataNasc) return '';
-    const hoje = new Date();
-    const nasc = new Date(dataNasc);
-    let idade = hoje.getFullYear() - nasc.getFullYear();
-    const m = hoje.getMonth() - nasc.getMonth();
-    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
-    return idade;
-  }
-
-  async function testarPush() {
-    setDebugResult('Enviando...');
-    const r = await testarAgora('AssisConnect', 'Notificação de teste! 🔔');
-    setDebugResult(r.sucesso ? '✓ Notificação disparada!' : `✗ ${r.motivo}`);
-  }
-
-  async function solicitarPermissao() {
-    setDebugResult('Solicitando permissão...');
-    const ok = await pedirPermissao();
-    if (ok) {
-      setDebugResult('✓ Permissão concedida! Clique em "Enviar" para testar.');
-    } else {
-      setDebugResult('✗ Permissão negada. No Chrome: cadeado na barra de endereço → Notificações → Permitir');
-    }
-  }
-
-  function testarToast(tipo) {
-    setDebugModal(false);
-    setToast({ visible: true, message: `Toast de ${tipo} funcionando!`, type: tipo });
-  }
-
   const progresso = totalDiasMes > 0 ? (diasRegistrados / totalDiasMes) * 100 : 0;
+
+  // Animação da barra de progresso
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: progresso,
+      duration: 900,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [progresso, progressAnim]);
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+    extrapolate: 'clamp',
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: c.surface }}>
-      {/* Header */}
-      <View style={[styles.header, { height: 64 + insets.top, paddingTop: insets.top, backgroundColor: c.primary }]}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.headerGreet, { fontSize: scale(12) }]}>{saudacao()},</Text>
-          <Text style={[styles.headerName, { fontSize: scale(17) }]} numberOfLines={1}>{user?.nome || user?.usuario || 'Funcionário'}</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <Pressable onPress={() => { setDebugResult(''); setDebugModal(true); }} style={styles.headerBtn}>
-            <Feather name="zap" size={20} color="#fff" />
-          </Pressable>
-          <Pressable onPress={() => navigation.navigate('Profile')} style={styles.headerBtn}>
-            <Feather name="user" size={20} color="#fff" />
-          </Pressable>
-          <Pressable onPress={logout} style={styles.headerBtn}>
-            <Feather name="log-out" size={20} color="#fff" />
-          </Pressable>
-        </View>
-      </View>
-
-      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={() => setToast(t => ({ ...t, visible: false }))} />
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}
@@ -203,7 +148,7 @@ export default function DashboardScreen({ navigation }) {
                 {diasRegistrados} de {totalDiasMes} dias registrados
               </Text>
               <View style={[styles.progressBar, { backgroundColor: c.border }]}>
-                <View style={[styles.progressFill, { width: `${progresso}%`, backgroundColor: '#16a34a' }]} />
+                <Animated.View style={[styles.progressFill, { width: progressWidth, backgroundColor: '#16a34a' }]} />
               </View>
               <Text style={[styles.alertSub, { color: c.textSecondary, fontSize: scale(11) }]}>{Math.round(progresso)}% do mês</Text>
             </View>
@@ -262,7 +207,7 @@ export default function DashboardScreen({ navigation }) {
         <View style={[styles.section, { backgroundColor: c.white }]}>
           <Text style={[styles.sectionTitle, { color: c.textPrimary, fontSize: scale(14) }]}>Aniversariantes do Mês</Text>
           {aniversariantes.length > 0 ? aniversariantes.map((item, i) => (
-            <View key={i} style={[styles.listItem, { borderBottomColor: c.surface }]}>
+            <View key={item.id ?? `aniv-${i}`} style={[styles.listItem, { borderBottomColor: c.surface }]}>
               {item.fotoUrl ? (
                 <Image source={{ uri: item.fotoUrl }} style={styles.avatar} />
               ) : (
@@ -292,7 +237,7 @@ export default function DashboardScreen({ navigation }) {
             </Pressable>
           </View>
           {atividadesHoje.length > 0 ? atividadesHoje.map((item, i) => (
-            <View key={i} style={[styles.listItem, { borderBottomColor: c.surface }]}>
+            <View key={item.id ?? `ativ-${i}`} style={[styles.listItem, { borderBottomColor: c.surface }]}>
               <View style={[styles.activityDot, { backgroundColor: c.primary }]} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.listName, { color: c.textPrimary, fontSize: scale(13) }]}>{item.nome}</Text>
@@ -306,64 +251,11 @@ export default function DashboardScreen({ navigation }) {
           )}
         </View>
       </ScrollView>
-
-      {/* Modal de debug */}
-      <BottomSheet visible={debugModal} onClose={() => setDebugModal(false)}>
-          <View style={[styles.debugModal, { backgroundColor: c.white }]}>
-            <View style={styles.debugHeader}>
-              <Feather name="zap" size={20} color={c.primary} />
-              <Text style={[styles.debugTitle, { color: c.textPrimary }]}>Teste de Notificações</Text>
-              <Pressable onPress={() => setDebugModal(false)}>
-                <Feather name="x" size={22} color={c.textSecondary} />
-              </Pressable>
-            </View>
-
-            {debugResult ? (
-              <View style={[styles.debugResult, { backgroundColor: c.surface }]}>
-                <Text style={[styles.debugResultText, { color: c.textPrimary }]}>{debugResult}</Text>
-              </View>
-            ) : null}
-
-            <Text style={[styles.debugSectionLabel, { color: c.textSecondary }]}>NOTIFICAÇÃO PUSH</Text>
-            <Pressable style={[styles.debugBtn, { backgroundColor: c.primary }]} onPress={solicitarPermissao}>
-              <Feather name="shield" size={16} color="#fff" />
-              <Text style={styles.debugBtnText}>Solicitar permissão</Text>
-            </Pressable>
-            <Pressable style={[styles.debugBtn, { backgroundColor: c.primaryDark }]} onPress={testarPush}>
-              <Feather name="send" size={16} color="#fff" />
-              <Text style={styles.debugBtnText}>Enviar push (2s)</Text>
-            </Pressable>
-
-            <Text style={[styles.debugSectionLabel, { color: c.textSecondary, marginTop: 16 }]}>TOAST IN-APP</Text>
-            <View style={styles.debugToastRow}>
-              {[
-                { tipo: 'success', label: 'Sucesso', color: '#16a34a' },
-                { tipo: 'error',   label: 'Erro',    color: '#dc2626' },
-                { tipo: 'warn',    label: 'Aviso',   color: '#d97706' },
-                { tipo: 'info',    label: 'Info',    color: c.primary },
-              ].map(({ tipo, label, color }) => (
-                <Pressable key={tipo} style={[styles.debugToastBtn, { backgroundColor: color }]} onPress={() => testarToast(tipo)}>
-                  <Text style={styles.debugToastBtnText}>{label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-      </BottomSheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  headerGreet: { fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
-  headerName: { fontSize: 17, fontWeight: '800', color: '#fff' },
-  headerActions: { flexDirection: 'row', gap: 8 },
-  headerBtn: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
-  },
   statsRow: { flexDirection: 'row', paddingHorizontal: 8, marginTop: 8 },
   section: { marginHorizontal: 12, marginTop: 14, borderRadius: 14, padding: 14, elevation: 1 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
@@ -392,20 +284,4 @@ const styles = StyleSheet.create({
   activityDot: { width: 8, height: 8, borderRadius: 4 },
   emptyText: { fontSize: 13, fontStyle: 'italic' },
   linkText: { fontSize: 12, fontWeight: '700' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  debugModal: { borderRadius: 20, padding: 20 },
-  handle: { width: 40, height: 4, backgroundColor: '#ccc', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  debugHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
-  debugTitle: { flex: 1, fontSize: 17, fontWeight: '800' },
-  debugResult: { padding: 12, borderRadius: 10, marginBottom: 14 },
-  debugResultText: { fontSize: 13, fontWeight: '600' },
-  debugSectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 },
-  debugBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, paddingVertical: 13, borderRadius: 12, marginBottom: 8,
-  },
-  debugBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  debugToastRow: { flexDirection: 'row', gap: 8 },
-  debugToastBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-  debugToastBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
 });

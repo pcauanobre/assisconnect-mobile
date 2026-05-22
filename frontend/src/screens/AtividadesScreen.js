@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable,
-  TextInput, Alert, RefreshControl,
+  TextInput, RefreshControl,
 } from 'react-native';
 import BottomSheet from '../components/BottomSheet';
 import { Feather } from '@expo/vector-icons';
@@ -12,6 +12,9 @@ import LoadingOverlay from '../components/LoadingOverlay';
 import DateInput from '../components/DateInput';
 import MonthYearPicker from '../components/MonthYearPicker';
 import Toast from '../components/Toast';
+import FeedbackDialog from '../components/FeedbackDialog';
+import ConfirmDialog from '../components/ConfirmDialog';
+import useFeedback from '../hooks/useFeedback';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import colors from '../theme/colors';
 
@@ -19,18 +22,22 @@ export default function AtividadesScreen({ navigation }) {
   const { activeColors: c, scale } = useAccessibility();
   const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
   const showToast = (m, t = 'info') => setToast({ visible: true, message: m, type: t });
+  const fb = useFeedback();
+  const [excluirAlvo, setExcluirAlvo] = useState(null);
 
   function confirmarExcluirAtiv(ativ) {
-    Alert.alert('Excluir atividade', `Excluir "${ativ.nome}" de ${ativ.dataRegistro}?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => {
-        try {
-          await deleteAtividade(ativ.id);
-          showToast('Atividade removida.', 'success');
-          await carregar();
-        } catch { showToast('Falha ao excluir atividade.', 'error'); }
-      }},
-    ]);
+    setExcluirAlvo(ativ);
+  }
+
+  async function executarExclusao() {
+    if (!excluirAlvo) return;
+    try {
+      await deleteAtividade(excluirAlvo.id);
+      fb.success('Atividade removida', `"${excluirAlvo.nome}" foi excluída.`, 1400);
+      await carregar();
+    } catch {
+      fb.error('Falha ao excluir', 'Tente novamente em alguns instantes.');
+    }
   }
   const hoje = new Date();
   const [mes, setMes] = useState(hoje.getMonth() + 1);
@@ -77,9 +84,10 @@ export default function AtividadesScreen({ navigation }) {
 
   async function criarAtividade() {
     if (!form.nome.trim()) {
-      Alert.alert('Atenção', 'Informe o nome da atividade.');
+      showToast('Informe o nome da atividade.', 'warn');
       return;
     }
+    const nomeCriado = form.nome;
     try {
       await saveAtividade({
         nome: form.nome, dataRegistro: form.dataRegistro,
@@ -88,8 +96,10 @@ export default function AtividadesScreen({ navigation }) {
       setModalVisible(false);
       setForm({ nome: '', dataRegistro: hoje.toISOString().slice(0, 10), horaRegistro: '14:00' });
       await carregar();
-      Alert.alert('Sucesso', 'Atividade criada. Registre presença na aba Registro.');
-    } catch { Alert.alert('Erro', 'Falha ao criar atividade.'); }
+      fb.success('Atividade criada!', `Registre a presença de "${nomeCriado}" na aba Registro.`, 1800);
+    } catch {
+      fb.error('Falha ao criar', 'Não foi possível salvar a atividade.');
+    }
   }
 
   // Ranking por nome
@@ -255,6 +265,24 @@ export default function AtividadesScreen({ navigation }) {
       </BottomSheet>
       <Toast visible={toast.visible} message={toast.message} type={toast.type}
         onHide={() => setToast(t => ({ ...t, visible: false }))} />
+      <FeedbackDialog
+        visible={fb.visible}
+        onClose={fb.close}
+        type={fb.type}
+        title={fb.title}
+        message={fb.message}
+        autoCloseMs={fb.autoCloseMs}
+      />
+      <ConfirmDialog
+        visible={!!excluirAlvo}
+        onClose={() => setExcluirAlvo(null)}
+        onConfirm={executarExclusao}
+        title="Excluir atividade?"
+        message={excluirAlvo ? `"${excluirAlvo.nome}" de ${excluirAlvo.dataRegistro} será removida.` : ''}
+        confirmLabel="Excluir"
+        variant="danger"
+        icon="trash-2"
+      />
     </View>
   );
 }

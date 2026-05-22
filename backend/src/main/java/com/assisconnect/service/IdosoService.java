@@ -3,8 +3,12 @@ package com.assisconnect.service;
 import com.assisconnect.dto.IdosoDTO;
 import com.assisconnect.entity.Idoso;
 import com.assisconnect.repository.IdosoRepository;
+import com.assisconnect.repository.MedicamentoRepository;
+import com.assisconnect.repository.RegistroSaudeRepository;
+import com.assisconnect.repository.VisitaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -16,6 +20,15 @@ public class IdosoService {
 
     @Autowired
     private IdosoRepository repository;
+
+    @Autowired
+    private MedicamentoRepository medicamentoRepository;
+
+    @Autowired
+    private RegistroSaudeRepository registroSaudeRepository;
+
+    @Autowired
+    private VisitaRepository visitaRepository;
 
     public Idoso salvar(IdosoDTO dto) {
         Idoso idoso = new Idoso();
@@ -46,7 +59,12 @@ public class IdosoService {
         return repository.save(idoso);
     }
 
+    @Transactional
     public void excluir(Long id) {
+        // Remove dependentes antes para evitar violacao de FK
+        medicamentoRepository.deleteByIdosoId(id);
+        registroSaudeRepository.deleteByIdosoId(id);
+        visitaRepository.deleteByIdosoId(id);
         repository.deleteById(id);
     }
 

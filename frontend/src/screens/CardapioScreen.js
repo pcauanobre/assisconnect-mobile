@@ -9,7 +9,11 @@ import ScreenHeader from '../components/ScreenHeader';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
 const DIAS = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado', 'Domingo'];
-const TIPO_LABELS = { cafe: 'Cafe', almoco: 'Almoco', jantar: 'Jantar' };
+const DIA_LABELS = {
+  Segunda: 'Segunda', Terca: 'Terça', Quarta: 'Quarta', Quinta: 'Quinta',
+  Sexta: 'Sexta', Sabado: 'Sábado', Domingo: 'Domingo',
+};
+const TIPO_LABELS = { cafe: 'Café', almoco: 'Almoço', jantar: 'Jantar' };
 const TIPO_ICONS = { cafe: 'coffee', almoco: 'sun', jantar: 'moon' };
 
 export default function CardapioScreen() {
@@ -30,8 +34,8 @@ export default function CardapioScreen() {
         mapped[item.dia][item.tipo] = item;
       });
       setCardapio(mapped);
-    } catch (e) {
-      console.log('[CARDAPIO] Erro:', e);
+    } catch {
+      // mantém estado anterior em caso de falha
     } finally {
       setLoading(false);
     }
@@ -53,7 +57,7 @@ export default function CardapioScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
-      <ScreenHeader title="Cardapio" />
+      <ScreenHeader title="Cardápio" />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -64,7 +68,7 @@ export default function CardapioScreen() {
           return (
             <View key={dia} style={[styles.dayCard, { backgroundColor: c.white }]}>
               <View style={[styles.dayHeader, { borderBottomColor: c.surface }]}>
-                <Text style={[styles.dayTitle, { color: c.primary, fontSize: scale(16) }]}>{dia}</Text>
+                <Text style={[styles.dayTitle, { color: c.primary, fontSize: scale(16) }]}>{DIA_LABELS[dia]}</Text>
                 <Pressable onPress={() => setEditDia(dia)} style={[styles.editBtn, { backgroundColor: c.surface }]}>
                   <Feather name="edit-2" size={16} color={c.primary} />
                 </Pressable>
@@ -73,7 +77,7 @@ export default function CardapioScreen() {
               {['cafe', 'almoco', 'jantar'].map((tipo) => (
                 <View key={tipo} style={styles.mealRow}>
                   <Feather name={TIPO_ICONS[tipo]} size={16} color={c.primary} style={styles.mealIcon} />
-                  <Text style={[styles.mealType, { color: c.textPrimary, fontSize: scale(12) }]}>{TIPO_LABELS[tipo]}</Text>
+                  <Text style={[styles.mealType, { color: c.textPrimary, fontSize: scale(12) }]} numberOfLines={1}>{TIPO_LABELS[tipo]}</Text>
                   <Text style={[styles.mealName, { color: c.textSecondary, fontSize: scale(13) }]} numberOfLines={1}>
                     {meals[tipo]?.prato || '-'}
                   </Text>
@@ -117,7 +121,7 @@ const styles = StyleSheet.create({
   },
   mealRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5 },
   mealIcon: { marginRight: 6 },
-  mealType: { width: 55, fontWeight: '700' },
+  mealType: { width: 68, fontWeight: '700' },
   mealName: { flex: 1 },
   mealCal: { marginLeft: 4 },
 });

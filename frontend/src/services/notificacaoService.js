@@ -150,8 +150,7 @@ export async function agendarLembreteDiario(hora = 8, minuto = 0) {
         ...(Platform.OS === 'android' ? { channelId: 'default' } : {}),
       },
     });
-  } catch (e) {
-    console.log('[NOTIF] Erro ao agendar:', e);
+  } catch {
     return null;
   }
 }

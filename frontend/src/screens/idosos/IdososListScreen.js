@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, FlatList, StyleSheet, Pressable, Alert, Text } from 'react-native';
+import { View, FlatList, StyleSheet, Pressable } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getIdosos, deleteIdoso } from '../../services/idosoService';
@@ -8,23 +8,35 @@ import SearchBar from '../../components/SearchBar';
 import FilterModal from '../../components/FilterModal';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import ScreenHeader from '../../components/ScreenHeader';
+import EmptyState from '../../components/EmptyState';
+import FAB from '../../components/FAB';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import FeedbackDialog from '../../components/FeedbackDialog';
+import useFeedback from '../../hooks/useFeedback';
+import Toast from '../../components/Toast';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
+import { calcularIdade } from '../../utils/helpers';
 
 export default function IdososListScreen({ navigation }) {
-  const { activeColors: c, scale } = useAccessibility();
+  const { activeColors: c } = useAccessibility();
   const [idosos, setIdosos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showFilter, setShowFilter] = useState(false);
   const [filters, setFilters] = useState({ sexo: 'Todos', status: 'Todos', idadeMin: '', idadeMax: '' });
+  const [confirmTarget, setConfirmTarget] = useState(null); // { id, nome }
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+  const fb = useFeedback();
+
+  const showToast = (message, type = 'info') => setToast({ visible: true, message, type });
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await getIdosos();
       setIdosos(res.data || []);
-    } catch (e) {
-      console.log('[IDOSOS] Erro:', e);
+    } catch {
+      // silenciosamente; UI mostra estado vazio
     } finally {
       setLoading(false);
     }
@@ -35,16 +47,6 @@ export default function IdososListScreen({ navigation }) {
       loadData();
     }, [loadData])
   );
-
-  function calcularIdade(dataNasc) {
-    if (!dataNasc) return 0;
-    const hoje = new Date();
-    const nasc = new Date(dataNasc);
-    let idade = hoje.getFullYear() - nasc.getFullYear();
-    const m = hoje.getMonth() - nasc.getMonth();
-    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
-    return idade;
-  }
 
   function getFilteredList() {
     let list = [...idosos];
@@ -74,22 +76,18 @@ export default function IdososListScreen({ navigation }) {
     return list;
   }
 
+  async function executarExclusao(id, nome) {
+    try {
+      await deleteIdoso(id);
+      setIdosos((prev) => prev.filter((i) => i.id !== id));
+      fb.success('Idoso excluído', `${nome} foi removido(a) do sistema.`, 1300);
+    } catch {
+      fb.error('Não foi possível excluir', 'Tente novamente em alguns instantes.');
+    }
+  }
+
   function handleDelete(id, nome) {
-    Alert.alert('Confirmar', `Deseja excluir ${nome}?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteIdoso(id);
-            setIdosos((prev) => prev.filter((i) => i.id !== id));
-          } catch (e) {
-            Alert.alert('Erro', 'Nao foi possivel excluir.');
-          }
-        },
-      },
-    ]);
+    setConfirmTarget({ id, nome });
   }
 
   if (loading) return <LoadingOverlay />;
@@ -113,32 +111,60 @@ export default function IdososListScreen({ navigation }) {
         keyExtractor={(item) => String(item.id)}
         numColumns={2}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <IdosoCard
             idoso={item}
+            index={index}
             onView={() => navigation.navigate('IdosoDetail', { id: item.id })}
             onEdit={() => navigation.navigate('IdosoForm', { id: item.id })}
             onDelete={() => handleDelete(item.id, item.nome)}
           />
         )}
         ListEmptyComponent={
-          <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(14) }]}>Nenhum idoso encontrado</Text>
+          <EmptyState
+            icon="users"
+            title="Nenhum idoso encontrado"
+            subtitle={search || filters.sexo !== 'Todos' ? 'Tente ajustar os filtros' : 'Cadastre o primeiro idoso pelo botão +'}
+          />
         }
       />
 
-      {/* FAB */}
-      <Pressable
-        style={[styles.fab, { backgroundColor: c.primary }]}
-        onPress={() => navigation.navigate('IdosoForm', {})}
-      >
-        <Feather name="plus" size={24} color={c.white} />
-      </Pressable>
+      <FAB onPress={() => navigation.navigate('IdosoForm', {})} accessibilityLabel="Cadastrar novo idoso" />
 
       <FilterModal
         visible={showFilter}
         onClose={() => setShowFilter(false)}
         onApply={setFilters}
         initialFilters={filters}
+      />
+
+      <ConfirmDialog
+        visible={!!confirmTarget}
+        onClose={() => setConfirmTarget(null)}
+        onConfirm={() => confirmTarget && executarExclusao(confirmTarget.id, confirmTarget.nome)}
+        title="Excluir idoso?"
+        message={confirmTarget
+          ? `Esta ação não pode ser desfeita. ${confirmTarget.nome} e todos os seus registros de saúde, medicamentos e visitas serão removidos.`
+          : ''}
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+        icon="trash-2"
+      />
+
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={() => setToast(t => ({ ...t, visible: false }))}
+      />
+      <FeedbackDialog
+        visible={fb.visible}
+        onClose={fb.close}
+        type={fb.type}
+        title={fb.title}
+        message={fb.message}
+        autoCloseMs={fb.autoCloseMs}
       />
     </View>
   );
@@ -155,15 +181,5 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 12,
   },
-  list: { paddingHorizontal: 8, paddingBottom: 80 },
-  emptyText: {
-    textAlign: 'center', marginTop: 40,
-  },
-  fab: {
-    position: 'absolute', bottom: 20, right: 20,
-    width: 56, height: 56, borderRadius: 28,
-    alignItems: 'center', justifyContent: 'center',
-    elevation: 5,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
-  },
+  list: { paddingHorizontal: 8, paddingBottom: 80, flexGrow: 1 },
 });
