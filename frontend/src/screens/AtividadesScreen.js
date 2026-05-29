@@ -14,6 +14,7 @@ import MonthYearPicker from '../components/MonthYearPicker';
 import Toast from '../components/Toast';
 import FeedbackDialog from '../components/FeedbackDialog';
 import ConfirmDialog from '../components/ConfirmDialog';
+import AnimatedEnter from '../components/AnimatedEnter';
 import useFeedback from '../hooks/useFeedback';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import colors from '../theme/colors';
@@ -132,6 +133,7 @@ export default function AtividadesScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <AnimatedEnter index={0}>
         <View style={[styles.monthNav, { backgroundColor: c.white }]}>
           <TouchableOpacity onPress={() => mudarMes(-1)} style={styles.arrow}>
             <Feather name="chevron-left" size={22} color={c.primary} />
@@ -146,7 +148,9 @@ export default function AtividadesScreen({ navigation }) {
             <Feather name="chevron-right" size={22} color={c.primary} />
           </TouchableOpacity>
         </View>
+        </AnimatedEnter>
 
+        <AnimatedEnter index={1}>
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { backgroundColor: c.white }]}>
             <Feather name="calendar" size={18} color={c.primary} />
@@ -166,8 +170,10 @@ export default function AtividadesScreen({ navigation }) {
             <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Tipos</Text>
           </View>
         </View>
+        </AnimatedEnter>
 
         {rankingList.length > 0 && (
+          <AnimatedEnter index={2}>
           <View style={[styles.section, { backgroundColor: c.white }]}>
             <Text style={[styles.sectionTitle, { color: c.primary, fontSize: scale(15) }]}>Top 5 mais frequentadas</Text>
             {rankingList.map((r, i) => (
@@ -185,8 +191,10 @@ export default function AtividadesScreen({ navigation }) {
               </View>
             ))}
           </View>
+          </AnimatedEnter>
         )}
 
+        <AnimatedEnter index={3}>
         <View style={[styles.section, { backgroundColor: c.white }]}>
           <Text style={styles.sectionTitle}>Todas as atividades</Text>
           {atividadesOrdenadas.length === 0 ? (
@@ -221,6 +229,7 @@ export default function AtividadesScreen({ navigation }) {
             ))
           )}
         </View>
+        </AnimatedEnter>
       </ScrollView>
 
       <Pressable style={[styles.fab, { backgroundColor: colors.primary }]} onPress={() => setModalVisible(true)}>

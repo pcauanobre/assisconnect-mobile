@@ -1,5 +1,52 @@
 # Como Rodar o AssisConnect
 
+---
+
+## ⚡ Como Startar o Projeto (TL;DR)
+
+### 1. Backend (pasta `backend/`)
+
+**Opção A — Maven portable do projeto (qualquer PC, zero instalação):**
+```powershell
+.\tools\maven\bin\mvn.cmd spring-boot:run
+```
+
+**Opção B — Maven instalado no PATH:**
+```powershell
+mvn spring-boot:run
+```
+
+Verifica se tem Maven global: `mvn -v`
+- Se aparecer versão → tá no PATH, pode usar opção B
+- Se der erro → usa opção A (portable)
+
+Sobe em `http://localhost:8080`.
+
+### 2. Frontend (pasta `frontend/`, outro terminal)
+
+```bash
+npx expo start
+```
+
+Escaneia QR no **Expo Go**.
+
+### 3. Atalho — `.bat` na raiz
+
+Cria `start-back.bat`:
+```bat
+cd backend
+tools\maven\bin\mvn.cmd spring-boot:run
+```
+Dois cliques sobe o back em qualquer PC.
+
+### Adicionar Maven ao PATH (opcional, permanente)
+
+1. Win+R → `sysdm.cpl` → Avançado → Variáveis de Ambiente
+2. Em "Path" → Novo → `C:\maven\bin` (ou caminho do portable)
+3. Reabre terminal → `mvn -v` confere
+
+---
+
 ## Pré-requisitos
 
 - Java JDK 17+ instalado → https://adoptium.net

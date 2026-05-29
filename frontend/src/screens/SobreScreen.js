@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import ScreenHeader from '../components/ScreenHeader';
+import AnimatedEnter from '../components/AnimatedEnter';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
 const EQUIPE = [
@@ -30,6 +31,7 @@ export default function SobreScreen({ navigation }) {
     <View style={{ flex: 1, backgroundColor: c.surface }}>
       <ScreenHeader title="Sobre o App" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+        <AnimatedEnter index={0}>
         <View style={styles.hero}>
           <View style={[styles.logoCircle, { backgroundColor: c.primary }]}>
             <Feather name="heart" size={36} color="#fff" />
@@ -40,7 +42,9 @@ export default function SobreScreen({ navigation }) {
             Sistema de gestão para lares de idosos
           </Text>
         </View>
+        </AnimatedEnter>
 
+        <AnimatedEnter index={1}>
         <View style={[styles.section, { backgroundColor: c.white }]}>
           <Text style={[styles.sectionTitle, { color: c.primary }]}>Sobre o projeto</Text>
           <Text style={[styles.text, { color: c.textPrimary }]}>
@@ -50,7 +54,9 @@ export default function SobreScreen({ navigation }) {
             acompanhamento de idosos em lares de assistência social.
           </Text>
         </View>
+        </AnimatedEnter>
 
+        <AnimatedEnter index={2}>
         <View style={[styles.section, { backgroundColor: c.white }]}>
           <Text style={[styles.sectionTitle, { color: c.primary }]}>Funcionalidades</Text>
           {FEATURES.map((f, i) => (
@@ -60,7 +66,9 @@ export default function SobreScreen({ navigation }) {
             </View>
           ))}
         </View>
+        </AnimatedEnter>
 
+        <AnimatedEnter index={3}>
         <View style={[styles.section, { backgroundColor: c.white }]}>
           <Text style={[styles.sectionTitle, { color: c.primary }]}>Equipe</Text>
           {EQUIPE.map((m, i) => (
@@ -75,7 +83,9 @@ export default function SobreScreen({ navigation }) {
             </View>
           ))}
         </View>
+        </AnimatedEnter>
 
+        <AnimatedEnter index={4}>
         <View style={[styles.section, { backgroundColor: c.white }]}>
           <Text style={[styles.sectionTitle, { color: c.primary }]}>Tecnologias</Text>
           <View style={styles.techRow}>
@@ -86,6 +96,7 @@ export default function SobreScreen({ navigation }) {
             ))}
           </View>
         </View>
+        </AnimatedEnter>
 
         <Text style={[styles.footer, { color: c.textSecondary }]}>
           UNIFOR — N393 Projeto Aplicado Multiplataforma — 2026

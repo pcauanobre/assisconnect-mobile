@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { getAtividades } from '../../services/atividadeService';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import MonthYearPicker from '../../components/MonthYearPicker';
+import AnimatedEnter from '../../components/AnimatedEnter';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -64,6 +65,7 @@ export default function HistoricoPresencaScreen({ route }) {
   return (
     <ScrollView
         showsVerticalScrollIndicator={false} style={[styles.container, { backgroundColor: c.surface }]} contentContainerStyle={{ paddingBottom: 30 }}>
+      <AnimatedEnter index={0}>
       <View style={[styles.header, { backgroundColor: c.white, borderBottomColor: c.border }]}>
         <Text style={[styles.subtitle, { color: c.textPrimary, fontSize: scale(15) }]}>{idosoNome}</Text>
 
@@ -81,7 +83,9 @@ export default function HistoricoPresencaScreen({ route }) {
           </TouchableOpacity>
         </View>
       </View>
+      </AnimatedEnter>
 
+      <AnimatedEnter index={1}>
       <View style={[styles.statsCard, { backgroundColor: c.white }]}>
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{presentes}</Text>
@@ -96,13 +100,17 @@ export default function HistoricoPresencaScreen({ route }) {
           <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Presença</Text>
         </View>
       </View>
+      </AnimatedEnter>
 
+      <AnimatedEnter index={2}>
       <View style={styles.legend}>
         <Legend color={c.success} label="Presente" textColor={c.textSecondary} fontSize={scale(11)} />
         <Legend color={c.danger}  label="Ausente"  textColor={c.textSecondary} fontSize={scale(11)} />
         <Legend color={c.border}  label="Sem atividade" textColor={c.textSecondary} fontSize={scale(11)} />
       </View>
+      </AnimatedEnter>
 
+      <AnimatedEnter index={3}>
       <View style={styles.calendar}>
         {DIAS_SEMANA.map((ds) => (
           <View key={ds} style={styles.weekLabel}>
@@ -131,6 +139,7 @@ export default function HistoricoPresencaScreen({ route }) {
           </View>
         ))}
       </View>
+      </AnimatedEnter>
     </ScrollView>
   );
 }

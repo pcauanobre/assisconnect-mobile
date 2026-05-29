@@ -14,6 +14,7 @@ import BottomSheet from '../components/BottomSheet';
 import Toast from '../components/Toast';
 import FAB from '../components/FAB';
 import FeedbackDialog from '../components/FeedbackDialog';
+import AnimatedEnter from '../components/AnimatedEnter';
 import useFeedback from '../hooks/useFeedback';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
@@ -212,6 +213,7 @@ export default function RegistroDiarioScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}
       >
         {/* Cabeçalho de contexto */}
+        <AnimatedEnter index={0}>
         <View style={[styles.contextCard, { backgroundColor: c.primary }]}>
           <View style={styles.contextRow}>
 
@@ -243,8 +245,10 @@ export default function RegistroDiarioScreen() {
 
           </View>
         </View>
+        </AnimatedEnter>
 
         {/* Seletor de Atividade */}
+        <AnimatedEnter index={1}>
         <View style={[styles.card, { backgroundColor: c.white, borderColor: c.border }]}>
           <Text style={[styles.cardTitle, { color: c.primary, fontSize: scale(13) }]}>
             <Feather name="activity" size={13} /> ATIVIDADE
@@ -275,8 +279,10 @@ export default function RegistroDiarioScreen() {
             />
           </View>
         </View>
+        </AnimatedEnter>
 
         {/* Lista de presença */}
+        <AnimatedEnter index={2}>
         <View style={[styles.card, { backgroundColor: c.white, borderColor: c.border }]}>
           <Text style={[styles.cardTitle, { color: c.primary, fontSize: scale(13) }]}>
             <Feather name="check-square" size={13} /> REGISTRO DE PRESENÇA
@@ -339,6 +345,7 @@ export default function RegistroDiarioScreen() {
             </View>
           )}
         </View>
+        </AnimatedEnter>
       </ScrollView>
 
       <FAB

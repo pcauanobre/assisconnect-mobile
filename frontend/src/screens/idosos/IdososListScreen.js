@@ -10,6 +10,7 @@ import LoadingOverlay from '../../components/LoadingOverlay';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
 import FAB from '../../components/FAB';
+import AnimatedEnter from '../../components/AnimatedEnter';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import FeedbackDialog from '../../components/FeedbackDialog';
 import useFeedback from '../../hooks/useFeedback';
@@ -97,14 +98,16 @@ export default function IdososListScreen({ navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
       <ScreenHeader title="Idosos" />
-      <View style={styles.searchRow}>
-        <View style={{ flex: 1 }}>
-          <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar por nome..." />
+      <AnimatedEnter index={0}>
+        <View style={styles.searchRow}>
+          <View style={{ flex: 1 }}>
+            <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar por nome..." />
+          </View>
+          <Pressable style={[styles.filterBtn, { backgroundColor: c.primary }]} onPress={() => setShowFilter(true)}>
+            <Feather name="filter" size={20} color={c.white} />
+          </Pressable>
         </View>
-        <Pressable style={[styles.filterBtn, { backgroundColor: c.primary }]} onPress={() => setShowFilter(true)}>
-          <Feather name="filter" size={20} color={c.white} />
-        </Pressable>
-      </View>
+      </AnimatedEnter>
 
       <FlatList
         data={filtered}

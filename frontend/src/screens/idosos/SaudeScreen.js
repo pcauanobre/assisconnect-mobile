@@ -12,6 +12,7 @@ import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getRegistrosSaude, createRegistroSaude, deleteRegistroSaude } from '../../services/saudeService';
 import LoadingOverlay from '../../components/LoadingOverlay';
+import AnimatedEnter from '../../components/AnimatedEnter';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 import DateInput from '../../components/DateInput';
 
@@ -86,12 +87,15 @@ export default function SaudeScreen({ route }) {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
-      <View style={[styles.header, { backgroundColor: c.white, borderBottomColor: c.border }]}>
-        <Text style={[styles.subtitle, { color: c.textPrimary }]}>{idosoNome || 'Idoso'}</Text>
-        <Text style={[styles.counter, { color: c.textSecondary }]}>{registros.length} registro(s)</Text>
-      </View>
+      <AnimatedEnter index={0}>
+        <View style={[styles.header, { backgroundColor: c.white, borderBottomColor: c.border }]}>
+          <Text style={[styles.subtitle, { color: c.textPrimary }]}>{idosoNome || 'Idoso'}</Text>
+          <Text style={[styles.counter, { color: c.textSecondary }]}>{registros.length} registro(s)</Text>
+        </View>
+      </AnimatedEnter>
 
       {pesos.length > 1 && (
+        <AnimatedEnter index={1}>
         <View style={[styles.chartCard, { backgroundColor: c.white }]}>
           <Text style={[styles.chartTitle, { color: c.primary }]}>Evolução do peso</Text>
           <View style={styles.chartArea}>
@@ -107,6 +111,7 @@ export default function SaudeScreen({ route }) {
             })}
           </View>
         </View>
+        </AnimatedEnter>
       )}
 
       <FlatList
@@ -120,7 +125,8 @@ export default function SaudeScreen({ route }) {
             <Text style={[styles.emptyText, { color: c.textSecondary }]}>Nenhum registro de saúde ainda</Text>
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
+          <AnimatedEnter index={index + 2}>
           <View style={[styles.card, { backgroundColor: c.white }]}>
             <View style={styles.cardHeader}>
               <Feather name="calendar" size={14} color={c.primary} />
@@ -145,6 +151,7 @@ export default function SaudeScreen({ route }) {
             </View>
             {!!item.observacoes && <Text style={[styles.obs, { color: c.textSecondary }]}>{item.observacoes}</Text>}
           </View>
+          </AnimatedEnter>
         )}
       />
 

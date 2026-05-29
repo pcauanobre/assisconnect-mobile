@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AnimatedEnter from '../components/AnimatedEnter';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
 export const TERMOS_KEY = '@assisconnect_termos_aceitos';
@@ -65,11 +66,13 @@ export default function TermosUsoScreen({ onAceitar }) {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
+      <AnimatedEnter index={0}>
       <View style={[styles.header, { backgroundColor: c.primary }]}>
         <Feather name="file-text" size={28} color="#fff" />
         <Text style={[styles.headerTitle, { fontSize: scale(22) }]}>Termos de Uso</Text>
         <Text style={[styles.headerSub, { fontSize: scale(13) }]}>Leia antes de continuar</Text>
       </View>
+      </AnimatedEnter>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -78,7 +81,9 @@ export default function TermosUsoScreen({ onAceitar }) {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
+        <AnimatedEnter index={1}>
         <Text style={[styles.termos, { color: c.textPrimary, fontSize: scale(14) }]}>{TERMOS_TEXTO}</Text>
+        </AnimatedEnter>
         {!scrollado && (
           <View style={styles.scrollHint}>
             <Feather name="chevrons-down" size={16} color={c.textSecondary} />

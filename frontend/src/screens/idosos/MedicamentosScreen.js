@@ -14,6 +14,7 @@ import {
   getMedicamentosByIdoso, createMedicamento, updateMedicamento, deleteMedicamento,
 } from '../../services/medicamentoService';
 import LoadingOverlay from '../../components/LoadingOverlay';
+import AnimatedEnter from '../../components/AnimatedEnter';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 const FREQUENCIAS = ['Diário', '12/12h', '8/8h', '6/6h', 'Semanal', 'Quando necessário'];
@@ -92,10 +93,12 @@ export default function MedicamentosScreen({ route }) {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
-      <View style={[styles.header, { backgroundColor: c.white, borderBottomColor: c.border }]}>
-        <Text style={[styles.subtitle, { color: c.textPrimary }]}>{idosoNome || 'Idoso'}</Text>
-        <Text style={[styles.counter, { color: c.textSecondary }]}>{medicamentos.length} medicamento(s)</Text>
-      </View>
+      <AnimatedEnter index={0}>
+        <View style={[styles.header, { backgroundColor: c.white, borderBottomColor: c.border }]}>
+          <Text style={[styles.subtitle, { color: c.textPrimary }]}>{idosoNome || 'Idoso'}</Text>
+          <Text style={[styles.counter, { color: c.textSecondary }]}>{medicamentos.length} medicamento(s)</Text>
+        </View>
+      </AnimatedEnter>
 
       <FlatList
         data={medicamentos}
@@ -108,7 +111,8 @@ export default function MedicamentosScreen({ route }) {
             <Text style={[styles.emptyText, { color: c.textSecondary }]}>Nenhum medicamento cadastrado</Text>
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
+          <AnimatedEnter index={index + 1}>
           <View style={[styles.card, { backgroundColor: c.white }, !item.ativo && styles.cardInativo]}>
             <View style={styles.cardHeader}>
               <View style={[styles.iconCircle, { backgroundColor: c.accent }]}>
@@ -142,6 +146,7 @@ export default function MedicamentosScreen({ route }) {
               </TouchableOpacity>
             </View>
           </View>
+          </AnimatedEnter>
         )}
       />
 

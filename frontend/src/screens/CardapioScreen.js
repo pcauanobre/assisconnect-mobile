@@ -6,6 +6,7 @@ import { getCardapio } from '../services/cardapioService';
 import MealEditModal from '../components/MealEditModal';
 import LoadingOverlay from '../components/LoadingOverlay';
 import ScreenHeader from '../components/ScreenHeader';
+import AnimatedEnter from '../components/AnimatedEnter';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
 const DIAS = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado', 'Domingo'];
@@ -63,10 +64,11 @@ export default function CardapioScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}
       >
-        {DIAS.map((dia) => {
+        {DIAS.map((dia, idx) => {
           const meals = cardapio[dia] || {};
           return (
-            <View key={dia} style={[styles.dayCard, { backgroundColor: c.white }]}>
+            <AnimatedEnter key={dia} index={idx}>
+            <View style={[styles.dayCard, { backgroundColor: c.white }]}>
               <View style={[styles.dayHeader, { borderBottomColor: c.surface }]}>
                 <Text style={[styles.dayTitle, { color: c.primary, fontSize: scale(16) }]}>{DIA_LABELS[dia]}</Text>
                 <Pressable onPress={() => setEditDia(dia)} style={[styles.editBtn, { backgroundColor: c.surface }]}>
@@ -87,6 +89,7 @@ export default function CardapioScreen() {
                 </View>
               ))}
             </View>
+            </AnimatedEnter>
           );
         })}
       </ScrollView>

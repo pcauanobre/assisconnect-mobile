@@ -11,6 +11,7 @@ import { getAtividadesHoje, getDiasComRegistro } from '../services/atividadeServ
 import { getUsuariosCount } from '../services/usuarioService';
 import { getIdososSemVisita } from '../services/visitaService';
 import StatCard from '../components/StatCard';
+import AnimatedEnter from '../components/AnimatedEnter';
 import { calcularIdade } from '../utils/helpers';
 
 export default function DashboardScreen({ navigation }) {
@@ -99,16 +100,21 @@ export default function DashboardScreen({ navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}
       >
         {/* Stats */}
-        <View style={styles.statsRow}>
-          <StatCard icon="users"     label="Total Idosos"    value={stats.idosos}       color={c.primary} />
-          <StatCard icon="gift"      label="Aniversários"    value={stats.aniversarios}  color="#d97706" />
-        </View>
-        <View style={styles.statsRow}>
-          <StatCard icon="clipboard" label="Atividades Hoje" value={stats.atividades}   color="#16a34a" />
-          <StatCard icon="briefcase" label="Colaboradores"   value={stats.colaboradores} color="#2563eb" />
-        </View>
+        <AnimatedEnter index={0}>
+          <View style={styles.statsRow}>
+            <StatCard icon="users"     label="Total Idosos"    value={stats.idosos}       color={c.primary} />
+            <StatCard icon="gift"      label="Aniversários"    value={stats.aniversarios}  color="#d97706" />
+          </View>
+        </AnimatedEnter>
+        <AnimatedEnter index={1}>
+          <View style={styles.statsRow}>
+            <StatCard icon="clipboard" label="Atividades Hoje" value={stats.atividades}   color="#16a34a" />
+            <StatCard icon="briefcase" label="Colaboradores"   value={stats.colaboradores} color="#2563eb" />
+          </View>
+        </AnimatedEnter>
 
         {/* Alertas */}
+        <AnimatedEnter index={2}>
         <View style={[styles.section, { backgroundColor: c.white }]}>
           <View style={styles.sectionHeader}>
             <Feather name="bell" size={15} color={c.primary} />
@@ -158,8 +164,10 @@ export default function DashboardScreen({ navigation }) {
             <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(12) }]}>Nenhum alerta no momento</Text>
           )}
         </View>
+        </AnimatedEnter>
 
         {/* Menu do Dia */}
+        <AnimatedEnter index={3}>
         <View style={[styles.section, { backgroundColor: c.white }]}>
           <Text style={[styles.sectionTitle, { color: c.textPrimary, fontSize: scale(14) }]}>Menu do Dia</Text>
           {menuHoje ? (
@@ -202,8 +210,10 @@ export default function DashboardScreen({ navigation }) {
             <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(12) }]}>Nenhum cardápio cadastrado para hoje</Text>
           )}
         </View>
+        </AnimatedEnter>
 
         {/* Aniversariantes */}
+        <AnimatedEnter index={4}>
         <View style={[styles.section, { backgroundColor: c.white }]}>
           <Text style={[styles.sectionTitle, { color: c.textPrimary, fontSize: scale(14) }]}>Aniversariantes do Mês</Text>
           {aniversariantes.length > 0 ? aniversariantes.map((item, i) => (
@@ -227,8 +237,10 @@ export default function DashboardScreen({ navigation }) {
             <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(12) }]}>Nenhum aniversariante neste mês</Text>
           )}
         </View>
+        </AnimatedEnter>
 
         {/* Atividades */}
+        <AnimatedEnter index={5}>
         <View style={[styles.section, { backgroundColor: c.white, marginBottom: 30 }]}>
           <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
             <Text style={[styles.sectionTitle, { color: c.textPrimary, marginBottom: 0, fontSize: scale(14) }]}>Atividades de Hoje</Text>
@@ -250,6 +262,7 @@ export default function DashboardScreen({ navigation }) {
             <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(12) }]}>Nenhuma atividade registrada hoje</Text>
           )}
         </View>
+        </AnimatedEnter>
       </ScrollView>
     </View>
   );

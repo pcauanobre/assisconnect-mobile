@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet, TextInput,
-  ActivityIndicator, RefreshControl, Modal,
+  ActivityIndicator, RefreshControl, Modal, LayoutAnimation, Platform, UIManager,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -11,34 +11,45 @@ import {
 } from '../services/relatorioService';
 import ScreenHeader from '../components/ScreenHeader';
 import FeedbackDialog from '../components/FeedbackDialog';
+import AnimatedEnter from '../components/AnimatedEnter';
+import AnimatedNumber from '../components/AnimatedNumber';
 import useFeedback from '../hooks/useFeedback';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { gerarPDFRelatorio } from '../utils/pdfGenerator';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ];
 
+const STAT_COLORS = {
+  total:     '#3D1F0C',
+  ativo:     '#16a34a',
+  inativo:   '#ca8a04',
+  falecido:  '#dc2626',
+  novo:      '#0ea5e9',
+  neutro:    '#3D1F0C',
+};
+
 export default function RelatorioMensalScreen() {
   const { activeColors: c, scale } = useAccessibility();
   const anoReal = new Date().getFullYear();
   const mesReal = new Date().getMonth() + 1;
 
-  // Simulacao de tempo (engrenagem)
   const [mesSimulado, setMesSimulado] = useState(mesReal);
   const [anoSimulado, setAnoSimulado] = useState(anoReal);
   const [showSimModal, setShowSimModal] = useState(false);
 
-  // Ano sendo visualizado (filtro por ano)
   const [anoSelecionado, setAnoSelecionado] = useState(anoReal);
 
-  // Relatorios salvos do ano selecionado
   const [relatoriosSalvos, setRelatoriosSalvos] = useState({});
   const [qtdMesAtual, setQtdMesAtual] = useState(null);
   const [loadingAno, setLoadingAno] = useState(false);
 
-  // Detalhes do mes expandido
   const [expandedMonth, setExpandedMonth] = useState(null);
   const [stats, setStats] = useState(null);
   const [relatorio, setRelatorio] = useState(null);
@@ -51,24 +62,20 @@ export default function RelatorioMensalScreen() {
 
   const isSimulando = mesSimulado !== mesReal || anoSimulado !== anoReal;
 
-  // Carrega relatorios salvos do ano
   const loadAno = useCallback(async (ano) => {
     setLoadingAno(true);
     try {
-      // Gera pendentes: ano atual usa mesSimulado, anos passados gera todos os 12 meses
       if (ano < anoSimulado) {
         await gerarPendentes(13, ano).catch(() => {});
       } else if (ano === anoSimulado && mesSimulado > 1) {
         await gerarPendentes(mesSimulado, ano).catch(() => {});
       }
 
-      // Carrega todos os relatorios salvos do ano
       const res = await getRelatoriosPorAno(ano);
       const map = {};
       (res.data || []).forEach((r) => { map[r.mes] = r; });
       setRelatoriosSalvos(map);
 
-      // Busca qtd de idosos do mes atual (sem relatorio salvo ainda)
       if (ano === anoReal) {
         const statsRes = await getEstatisticas(mesReal, anoReal).catch(() => null);
         setQtdMesAtual(statsRes?.data?.quantidadeIdosos ?? null);
@@ -93,7 +100,6 @@ export default function RelatorioMensalScreen() {
     setRefreshing(false);
   }
 
-  // Navegacao de simulacao
   function avancarMes() {
     let novoMes = mesSimulado;
     let novoAno = anoSimulado;
@@ -124,14 +130,13 @@ export default function RelatorioMensalScreen() {
     setShowSimModal(false);
   }
 
-  // Navegacao de ano (filtro)
   function trocarAno(direcao) {
     setAnoSelecionado((a) => a + direcao);
     setExpandedMonth(null);
   }
 
-  // Expandir mes
   async function handleExpand(mes) {
+    LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
     if (expandedMonth === mes) {
       setExpandedMonth(null);
       return;
@@ -143,11 +148,9 @@ export default function RelatorioMensalScreen() {
     setRelatorio(null);
 
     try {
-      // Pega estatisticas em tempo real
       const statsRes = await getEstatisticas(mes, anoSelecionado).catch(() => null);
       if (statsRes) setStats(statsRes.data);
 
-      // Pega relatorio salvo (se existir)
       const relRes = await getRelatorio(mes, anoSelecionado).catch(() => null);
       if (relRes && relRes.data) {
         setRelatorio(relRes.data);
@@ -162,7 +165,6 @@ export default function RelatorioMensalScreen() {
     }
   }
 
-  // Salvar relatorio do mes atual
   async function handleSave(mes) {
     try {
       setSaving(true);
@@ -181,64 +183,75 @@ export default function RelatorioMensalScreen() {
     }
   }
 
-  // Quantos meses mostrar
   const isAnoAtual = anoSelecionado === anoSimulado;
   const totalMeses = isAnoAtual ? mesSimulado : (anoSelecionado < anoSimulado ? 12 : 0);
   const mesesVisiveis = MESES.slice(0, totalMeses);
 
+  function StatCardItem({ icon, value, label, kind, decimals }) {
+    const accent = STAT_COLORS[kind] || STAT_COLORS.neutro;
+    return (
+      <View style={[styles.statItem, {
+        backgroundColor: c.surfaceLight,
+        borderLeftColor: accent,
+        borderColor: c.border,
+      }]}>
+        <View style={styles.statHeader}>
+          <Feather name={icon} size={14} color={accent} />
+          <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(10) }]} numberOfLines={1}>
+            {label}
+          </Text>
+        </View>
+        {typeof value === 'number' ? (
+          <AnimatedNumber
+            value={value}
+            decimals={decimals || 0}
+            style={[styles.statValue, { color: accent, fontSize: scale(22) }]}
+          />
+        ) : (
+          <Text style={[styles.statValue, { color: accent, fontSize: scale(22) }]}>{value || '-'}</Text>
+        )}
+      </View>
+    );
+  }
+
   function renderStats(data) {
     if (!data) return null;
+    const pctF = Number(data.percentualFeminino || 0);
+    const pctM = Number(data.percentualMasculino || 0);
     return (
       <>
         <View style={styles.statsGrid}>
-          <View style={[styles.statItem, { backgroundColor: '#f0e6d9' }]}>
-            <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{data.quantidadeIdosos}</Text>
-            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Total Idosos</Text>
-          </View>
-          <View style={[styles.statItem, { backgroundColor: '#d9f0d9' }]}>
-            <Text style={[styles.statValue, { color: '#16a34a', fontSize: scale(22) }]}>{data.idososAtivos}</Text>
-            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Ativos</Text>
-          </View>
-          <View style={[styles.statItem, { backgroundColor: '#f0f0d9' }]}>
-            <Text style={[styles.statValue, { color: '#ca8a04', fontSize: scale(22) }]}>{data.idososInativos}</Text>
-            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Inativos</Text>
-          </View>
-          <View style={[styles.statItem, { backgroundColor: '#f0d9d9' }]}>
-            <Text style={[styles.statValue, { color: '#dc2626', fontSize: scale(22) }]}>{data.idososFalecidos}</Text>
-            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Falecidos</Text>
-          </View>
-        </View>
-        <View style={styles.statsGrid}>
-          <View style={[styles.statItem, { backgroundColor: c.surfaceLight }]}>
-            <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{data.novosCadastros}</Text>
-            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Novos no mes</Text>
-          </View>
-          <View style={[styles.statItem, { backgroundColor: c.surfaceLight }]}>
-            <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{typeof data.mediaIdade === 'number' ? data.mediaIdade.toFixed(1) : data.mediaIdade}</Text>
-            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Media Idade</Text>
-          </View>
-          <View style={[styles.statItem, { backgroundColor: c.surfaceLight }]}>
-            <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{data.idosoMaisVelho || '-'}</Text>
-            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Mais velho</Text>
-          </View>
-          <View style={[styles.statItem, { backgroundColor: c.surfaceLight }]}>
-            <Text style={[styles.statValue, { color: c.primary, fontSize: scale(22) }]}>{data.idosoMaisNovo || '-'}</Text>
-            <Text style={[styles.statLabel, { color: c.textSecondary, fontSize: scale(11) }]}>Mais novo</Text>
-          </View>
+          <StatCardItem icon="users" label="Total" value={data.quantidadeIdosos} kind="total" />
+          <StatCardItem icon="user-check" label="Ativos" value={data.idososAtivos} kind="ativo" />
+          <StatCardItem icon="user-x" label="Inativos" value={data.idososInativos} kind="inativo" />
+          <StatCardItem icon="slash" label="Falecidos" value={data.idososFalecidos} kind="falecido" />
+          <StatCardItem icon="user-plus" label="Novos" value={data.novosCadastros} kind="novo" />
+          <StatCardItem icon="calendar" label="Média idade" value={data.mediaIdade} kind="neutro" decimals={1} />
+          <StatCardItem icon="trending-up" label="Mais velho" value={data.idosoMaisVelho} kind="neutro" />
+          <StatCardItem icon="trending-down" label="Mais novo" value={data.idosoMaisNovo} kind="neutro" />
         </View>
 
-        {(data.quantidadeIdosos > 0 || data.percentualFeminino > 0) && (
-          <View style={styles.genderBar}>
-            {(data.percentualFeminino || 0) > 0 && (
-              <View style={[styles.genderSegment, { flex: data.percentualFeminino, backgroundColor: '#ec4899' }]}>
-                <Text style={styles.genderText}>{data.percentualFeminino?.toFixed?.(0) || Math.round(data.percentualFeminino)}% F</Text>
+        {(data.quantidadeIdosos > 0 || pctF > 0 || pctM > 0) && (
+          <View style={styles.genderBlock}>
+            <Text style={[styles.genderTitle, { color: c.textSecondary, fontSize: scale(11) }]}>Distribuição por gênero</Text>
+            <View style={[styles.genderBar, { borderColor: c.border }]}>
+              {pctF > 0 && <View style={[styles.genderSegment, { flex: pctF, backgroundColor: '#ec4899' }]} />}
+              {pctM > 0 && <View style={[styles.genderSegment, { flex: pctM, backgroundColor: '#3b82f6' }]} />}
+            </View>
+            <View style={styles.genderLegend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#ec4899' }]} />
+                <Text style={[styles.legendText, { color: c.textPrimary, fontSize: scale(12) }]}>
+                  Feminino — {pctF.toFixed(1)}%
+                </Text>
               </View>
-            )}
-            {(data.percentualMasculino || 0) > 0 && (
-              <View style={[styles.genderSegment, { flex: data.percentualMasculino, backgroundColor: '#3b82f6' }]}>
-                <Text style={styles.genderText}>{data.percentualMasculino?.toFixed?.(0) || Math.round(data.percentualMasculino)}% M</Text>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#3b82f6' }]} />
+                <Text style={[styles.legendText, { color: c.textPrimary, fontSize: scale(12) }]}>
+                  Masculino — {pctM.toFixed(1)}%
+                </Text>
               </View>
-            )}
+            </View>
           </View>
         )}
       </>
@@ -249,19 +262,19 @@ export default function RelatorioMensalScreen() {
     <View style={{ flex: 1, backgroundColor: c.surface }}>
       <ScreenHeader title="Relatorios" />
 
-      {/* Filtro de ano */}
-      <View style={[styles.yearBar, { backgroundColor: c.white, borderBottomColor: c.border }]}>
-        <Pressable onPress={() => trocarAno(-1)} style={styles.yearArrow}>
-          <Feather name="chevron-left" size={18} color={c.primary} />
-        </Pressable>
-        <Text style={[styles.yearText, { color: c.primary, fontSize: scale(16) }]}>{anoSelecionado}</Text>
-        {anoSelecionado < anoSimulado && (
-          <Pressable onPress={() => trocarAno(1)} style={styles.yearArrow}>
-            <Feather name="chevron-right" size={18} color={c.primary} />
+      <AnimatedEnter index={0}>
+        <View style={[styles.yearBar, { backgroundColor: c.white, borderBottomColor: c.border }]}>
+          <Pressable onPress={() => trocarAno(-1)} style={styles.yearArrow}>
+            <Feather name="chevron-left" size={18} color={c.primary} />
           </Pressable>
-        )}
-        {anoSelecionado >= anoSimulado && <View style={{ width: 30 }} />}
-      </View>
+          <Text style={[styles.yearText, { color: c.primary, fontSize: scale(16) }]}>{anoSelecionado}</Text>
+          {anoSelecionado < anoSimulado ? (
+            <Pressable onPress={() => trocarAno(1)} style={styles.yearArrow}>
+              <Feather name="chevron-right" size={18} color={c.primary} />
+            </Pressable>
+          ) : <View style={{ width: 30 }} />}
+        </View>
+      </AnimatedEnter>
 
       <ScrollView
         style={styles.container}
@@ -280,102 +293,109 @@ export default function RelatorioMensalScreen() {
             const isCurrentMonth = anoSelecionado === anoReal && mes === mesReal;
             const isMesPassado = isAnoAtual ? mes < mesSimulado : anoSelecionado < anoSimulado;
             const salvo = relatoriosSalvos[mes];
+            const qtd = salvo ? salvo.quantidadeIdosos : (isCurrentMonth ? qtdMesAtual : null);
 
             return (
-              <View key={mes} style={[
-                styles.monthCard,
-                { backgroundColor: c.white },
-                isCurrentMonth && { borderWidth: 2, borderColor: c.primary },
-              ]}>
-                <Pressable style={styles.monthHeader} onPress={() => handleExpand(mes)}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={[styles.monthTitle, { color: c.textPrimary, fontSize: scale(16) }]}>{nomeMes} {anoSelecionado}</Text>
-                      {salvo && salvo.fechado && (
-                        <Feather name="check-circle" size={14} color="#16a34a" />
-                      )}
-                    </View>
-                    {(() => {
-                      const qtd = salvo ? salvo.quantidadeIdosos : (isCurrentMonth ? qtdMesAtual : null);
-                      return (isCurrentMonth || (qtd != null && !isExpanded)) ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
-                          {qtd != null && !isExpanded && (
-                            <Text style={[styles.monthSub, { color: c.textSecondary, fontSize: scale(12) }]}>{qtd} idosos</Text>
-                          )}
-                          {isCurrentMonth && (
-                            <Text style={[styles.currentBadge, { color: c.primary, backgroundColor: c.accent, fontSize: scale(10) }]}>Mes atual</Text>
-                          )}
-                        </View>
-                      ) : null;
-                    })()}
-                  </View>
-                  <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={c.primary} />
-                </Pressable>
-
-                {isExpanded && (
-                  <View style={[styles.detailSection, { borderTopColor: c.surface }]}>
-                    {loadingDetail ? (
-                      <ActivityIndicator size="small" color={c.primary} style={{ paddingVertical: 20 }} />
-                    ) : (
-                      <>
-                        {/* Sempre mostra estatisticas em tempo real */}
-                        {isMesPassado && salvo && salvo.fechado && (
-                          <View style={styles.savedBadge}>
-                            <Feather name="lock" size={12} color={c.textSecondary} />
-                            <Text style={[styles.savedBadgeText, { color: c.textSecondary, fontSize: scale(11) }]}>Relatorio fechado</Text>
+              <AnimatedEnter key={mes} index={index + 1}>
+                <View style={[
+                  styles.monthCard,
+                  { backgroundColor: c.white },
+                  isCurrentMonth && { borderWidth: 1.5, borderColor: c.primary },
+                ]}>
+                  <Pressable style={styles.monthHeader} onPress={() => handleExpand(mes)}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.monthTitle, { color: c.textPrimary, fontSize: scale(16) }]}>{nomeMes} {anoSelecionado}</Text>
+                        {salvo && salvo.fechado && (
+                          <Feather name="check-circle" size={14} color="#16a34a" />
+                        )}
+                        {isCurrentMonth && (
+                          <View style={[styles.currentBadge, { borderColor: c.primary }]}>
+                            <Text style={[styles.currentBadgeText, { color: c.primary, fontSize: scale(10) }]}>Mês atual</Text>
                           </View>
                         )}
-                        {renderStats(stats)}
+                      </View>
+                      {qtd != null && !isExpanded && (
+                        <Text style={[styles.monthSub, { color: c.textSecondary, fontSize: scale(12) }]}>{qtd} idosos</Text>
+                      )}
+                    </View>
+                    <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={c.primary} />
+                  </Pressable>
 
-                        <Text style={[styles.label, { marginTop: 12, color: c.textPrimary, fontSize: scale(14) }]}>Observacoes</Text>
-                        <TextInput
-                          value={observacoes}
-                          onChangeText={setObservacoes}
-                          multiline
-                          style={[styles.input, styles.multiline, { backgroundColor: c.surfaceLight, borderColor: c.border, color: c.textPrimary, fontSize: scale(14) }]}
-                          placeholder="Observacoes do mes..."
-                          placeholderTextColor={c.textSecondary}
-                          editable={isCurrentMonth}
-                        />
+                  {isExpanded && (
+                    <View style={[styles.detailSection, { borderTopColor: c.surface }]}>
+                      {loadingDetail ? (
+                        <ActivityIndicator size="small" color={c.primary} style={{ paddingVertical: 20 }} />
+                      ) : (
+                        <>
+                          {isMesPassado && salvo && salvo.fechado && (
+                            <View style={styles.savedBadge}>
+                              <Feather name="lock" size={12} color={c.textSecondary} />
+                              <Text style={[styles.savedBadgeText, { color: c.textSecondary, fontSize: scale(11) }]}>Relatorio fechado</Text>
+                            </View>
+                          )}
+                          {renderStats(stats)}
 
-                        {isCurrentMonth && (
+                          <Text style={[styles.label, { marginTop: 14, color: c.textPrimary, fontSize: scale(14) }]}>Observações</Text>
+                          <TextInput
+                            value={observacoes}
+                            onChangeText={setObservacoes}
+                            multiline
+                            style={[styles.input, styles.multiline, { backgroundColor: c.surfaceLight, borderColor: c.border, color: c.textPrimary, fontSize: scale(14) }]}
+                            placeholder="Observações do mês..."
+                            placeholderTextColor={c.textSecondary}
+                            editable={isCurrentMonth}
+                          />
+
+                          {isCurrentMonth && (
+                            <Pressable
+                              style={({ pressed }) => [styles.saveBtn, { backgroundColor: c.primary }, pressed && { opacity: 0.85 }]}
+                              onPress={() => handleSave(mes)}
+                              disabled={saving}
+                            >
+                              {saving ? (
+                                <ActivityIndicator color="#fff" />
+                              ) : (
+                                <>
+                                  <Feather name="check" size={16} color="#fff" />
+                                  <Text style={[styles.saveBtnText, { fontSize: scale(15) }]}>Confirmar relatório</Text>
+                                </>
+                              )}
+                            </Pressable>
+                          )}
+
                           <Pressable
-                            style={({ pressed }) => [styles.saveBtn, { backgroundColor: c.primary }, pressed && { opacity: 0.8 }]}
-                            onPress={() => handleSave(mes)}
-                            disabled={saving}
+                            style={({ pressed }) => [styles.pdfBtn, { backgroundColor: c.primary, borderColor: c.primary }, pressed && { opacity: 0.85 }]}
+                            onPress={async () => {
+                              try {
+                                await gerarPDFRelatorio(
+                                  { estatisticas: stats, observacoes },
+                                  mes,
+                                  anoSelecionado,
+                                  ({ type, title, message }) => {
+                                    if (type === 'error') fb.error(title, message);
+                                    else fb.success(title, message, 1600);
+                                  }
+                                );
+                              } catch {
+                                fb.error('Falha ao gerar PDF', 'Não foi possível exportar o relatório.');
+                              }
+                            }}
                           >
-                            {saving ? (
-                              <ActivityIndicator color="#fff" />
-                            ) : (
-                              <Text style={[styles.saveBtnText, { fontSize: scale(16) }]}>Confirmar Relatorio</Text>
-                            )}
+                            <Feather name="download" size={15} color="#fff" />
+                            <Text style={[styles.pdfBtnText, { fontSize: scale(14) }]}>Exportar PDF</Text>
                           </Pressable>
-                        )}
-
-                        <Pressable
-                          style={({ pressed }) => [styles.pdfBtn, pressed && { opacity: 0.8 }]}
-                          onPress={async () => {
-                            try {
-                              await gerarPDFRelatorio({ estatisticas: stats, observacoes }, mes, anoSelecionado);
-                            } catch {
-                              fb.error('Falha ao gerar PDF', 'Não foi possível exportar o relatório.');
-                            }
-                          }}
-                        >
-                          <Feather name="file-text" size={14} color={c.white} />
-                          <Text style={[styles.pdfBtnText, { fontSize: scale(14) }]}>Exportar PDF</Text>
-                        </Pressable>
-                      </>
-                    )}
-                  </View>
-                )}
-              </View>
+                        </>
+                      )}
+                    </View>
+                  )}
+                </View>
+              </AnimatedEnter>
             );
           })
         )}
       </ScrollView>
 
-      {/* Modal de simulacao */}
       <Modal visible={showSimModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: c.white }]}>
@@ -426,96 +446,75 @@ export default function RelatorioMensalScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 12, paddingBottom: 30 },
-  emptyText: {
-    textAlign: 'center', fontSize: 14,
-    fontStyle: 'italic', paddingVertical: 40,
-  },
+  emptyText: { textAlign: 'center', fontStyle: 'italic', paddingVertical: 40 },
 
-  // Barra de simulacao
-  simBar: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 8, paddingHorizontal: 8,
-  },
-  simArrow: { padding: 6 },
-  simCenter: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 6,
-  },
-  simText: { fontSize: 15, fontWeight: '600' },
-  simBadge: { backgroundColor: '#ef4444', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },
-  simBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
-  gearBtn: { padding: 6 },
-
-  // Filtro de ano
   yearBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 8, gap: 16,
-    borderBottomWidth: 1,
+    paddingVertical: 10, gap: 16, borderBottomWidth: 1,
   },
   yearArrow: { padding: 4 },
   yearText: { fontWeight: '700' },
 
-  // Cards de mes
   monthCard: {
-    borderRadius: 12, marginBottom: 10,
-    elevation: 1, boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)', overflow: 'hidden',
+    borderRadius: 14, marginBottom: 10,
+    elevation: 2, boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.06)', overflow: 'hidden',
   },
   monthHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: 14,
   },
   monthTitle: { fontWeight: '700' },
-  monthSub: { marginTop: 2 },
+  monthSub: { marginTop: 4 },
   currentBadge: {
-    fontWeight: '700',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 3,
+    borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12,
   },
+  currentBadgeText: { fontWeight: '700' },
   savedBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingVertical: 6, marginTop: 4,
   },
   savedBadgeText: { fontStyle: 'italic' },
 
-  // Detalhes expandido
   detailSection: {
     paddingHorizontal: 14, paddingBottom: 14, borderTopWidth: 1,
   },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, gap: 8 },
-  statItem: {
-    width: '47%', borderRadius: 10,
-    padding: 12, alignItems: 'center',
-  },
-  statValue: { fontWeight: '800' },
-  statLabel: { marginTop: 2 },
 
-  // Barra de genero
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, gap: 8 },
+  statItem: {
+    width: '47.5%', borderRadius: 10,
+    paddingVertical: 10, paddingHorizontal: 12,
+    borderWidth: 1, borderLeftWidth: 3,
+  },
+  statHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  statValue: { fontWeight: '800' },
+  statLabel: { fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3, flex: 1 },
+
+  genderBlock: { marginTop: 16 },
+  genderTitle: { fontWeight: '700', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
   genderBar: {
     flexDirection: 'row', borderRadius: 8, overflow: 'hidden',
-    marginTop: 10, height: 28,
+    height: 14, borderWidth: 1,
   },
-  genderSegment: { justifyContent: 'center', alignItems: 'center' },
-  genderText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  genderSegment: {},
+  genderLegend: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 8 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendText: { fontWeight: '600' },
 
-  // Form
   label: { fontWeight: '700', marginBottom: 6 },
-  input: {
-    borderRadius: 10, paddingHorizontal: 12,
-    paddingVertical: 10, borderWidth: 1,
-  },
+  input: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1 },
   multiline: { minHeight: 80, textAlignVertical: 'top' },
   saveBtn: {
-    marginTop: 12, paddingVertical: 14,
-    borderRadius: 10, alignItems: 'center',
+    marginTop: 12, paddingVertical: 13, borderRadius: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   saveBtnText: { color: '#fff', fontWeight: '800' },
   pdfBtn: {
-    marginTop: 10, backgroundColor: '#7c3aed', paddingVertical: 12, borderRadius: 10,
+    marginTop: 10, paddingVertical: 12, borderRadius: 10, borderWidth: 1,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   pdfBtnText: { color: '#fff', fontWeight: '700' },
 
-  // Modal
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center', alignItems: 'center', padding: 30,
@@ -525,10 +524,7 @@ const styles = StyleSheet.create({
     width: '100%', alignItems: 'center',
   },
   modalTitle: { fontWeight: '800', marginBottom: 8 },
-  modalDesc: {
-    textAlign: 'center',
-    marginBottom: 20, lineHeight: 18,
-  },
+  modalDesc: { textAlign: 'center', marginBottom: 20, lineHeight: 18 },
   modalNav: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 16 },
   modalArrow: { padding: 10, borderRadius: 10 },
   modalCurrent: { fontWeight: '700' },

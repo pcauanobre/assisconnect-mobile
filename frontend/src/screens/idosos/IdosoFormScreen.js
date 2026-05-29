@@ -11,6 +11,7 @@ import DateInput from '../../components/DateInput';
 import Toast from '../../components/Toast';
 import FeedbackDialog from '../../components/FeedbackDialog';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import AnimatedEnter from '../../components/AnimatedEnter';
 import useFeedback from '../../hooks/useFeedback';
 
 const SEXO_OPTIONS = ['Masculino', 'Feminino', 'Outro'];
@@ -110,6 +111,7 @@ export default function IdosoFormScreen({ route, navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <AnimatedEnter index={0}>
       <Pressable onPress={pickImage} style={styles.photoContainer}>
         {foto ? <Image source={{ uri: foto }} style={styles.photo} /> : (
           <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: c.accent }]}>
@@ -118,7 +120,9 @@ export default function IdosoFormScreen({ route, navigation }) {
         )}
         <Text style={[styles.photoLabel, { color: c.textSecondary, fontSize: scale(12) }]}>Selecionar foto</Text>
       </Pressable>
+      </AnimatedEnter>
 
+      <AnimatedEnter index={1}>
       <Text style={[styles.sectionTitle, { color: c.primary, fontSize: scale(16) }]}>Dados Pessoais</Text>
 
       <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Nome *</Text>
@@ -159,7 +163,9 @@ export default function IdosoFormScreen({ route, navigation }) {
           <TextInput value={form.cpf} onChangeText={(v) => updateField('cpf', v)} style={inputStyle} placeholderTextColor={c.textSecondary} />
         </View>
       </View>
+      </AnimatedEnter>
 
+      <AnimatedEnter index={2}>
       <Text style={[styles.sectionTitle, { color: c.primary, marginTop: 20, fontSize: scale(16) }]}>Endereço e Contato</Text>
 
       <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Endereço</Text>
@@ -188,7 +194,9 @@ export default function IdosoFormScreen({ route, navigation }) {
 
       <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(13) }]}>Tel. Responsável</Text>
       <TextInput value={form.telefoneResponsavel} onChangeText={(v) => updateField('telefoneResponsavel', v)} style={inputStyle} keyboardType="phone-pad" placeholderTextColor={c.textSecondary} />
+      </AnimatedEnter>
 
+      <AnimatedEnter index={3}>
       <Text style={[styles.sectionTitle, { color: c.primary, marginTop: 20, fontSize: scale(16) }]}>Saúde e Observações</Text>
 
       {[
@@ -205,7 +213,9 @@ export default function IdosoFormScreen({ route, navigation }) {
             multiline={key !== 'planoSaude'} placeholderTextColor={c.textSecondary} />
         </View>
       ))}
+      </AnimatedEnter>
 
+      <AnimatedEnter index={4}>
       {isEdit && (
         <View style={styles.switchSection}>
           {[
@@ -233,6 +243,7 @@ export default function IdosoFormScreen({ route, navigation }) {
           <Text style={[styles.deleteBtnText, { color: c.danger, fontSize: scale(14) }]}>Excluir Idoso</Text>
         </Pressable>
       )}
+      </AnimatedEnter>
     </ScrollView>
     <Toast visible={toast.visible} message={toast.message} type={toast.type}
       onHide={() => setToast(t => ({ ...t, visible: false }))} />

@@ -15,6 +15,7 @@ const AccessibilityContext = createContext({
   setFontScale: () => {},
   setHighContrast: () => {},
   setDarkMode: () => {},
+  resetConfig: () => {},
   scale: (n) => n,
   activeColors: colors,
 });
@@ -50,6 +51,10 @@ export function AccessibilityProvider({ children }) {
     persist({ ...config, darkMode });
   }
 
+  function resetConfig() {
+    persist({ ...defaultConfig });
+  }
+
   function scale(value) {
     if (typeof value === 'number') return Math.round(value * config.fontScale);
     return value;
@@ -63,7 +68,7 @@ export function AccessibilityProvider({ children }) {
 
   return (
     <AccessibilityContext.Provider
-      value={{ config, setFontScale, setHighContrast, setDarkMode, scale, activeColors }}
+      value={{ config, setFontScale, setHighContrast, setDarkMode, resetConfig, scale, activeColors }}
     >
       {children}
     </AccessibilityContext.Provider>

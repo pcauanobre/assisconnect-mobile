@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Text, Image, Pressable, StyleSheet, View, Animated, Easing } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { calcularIdade } from '../utils/helpers';
 
@@ -25,15 +26,19 @@ export default function IdosoCard({ idoso, onView, onEdit, onDelete, index = 0 }
   const { activeColors: c, scale } = useAccessibility();
   const enter = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    Animated.timing(enter, {
-      toValue: 1,
-      duration: 320,
-      delay: Math.min(index, 8) * 40,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [enter, index]);
+  useFocusEffect(
+    useCallback(() => {
+      enter.setValue(0);
+      Animated.timing(enter, {
+        toValue: 1,
+        duration: 320,
+        delay: Math.min(index, 8) * 40,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      return undefined;
+    }, [enter, index])
+  );
 
   const isInactive = idoso.inativo || idoso.falecido;
   const statusLabel = idoso.falecido ? 'Falecido' : idoso.inativo ? 'Inativo' : 'Ativo';

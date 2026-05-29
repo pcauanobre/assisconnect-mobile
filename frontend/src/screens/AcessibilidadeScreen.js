@@ -1,13 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert,
+  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import ScreenHeader from '../components/ScreenHeader';
+import BottomSheet from '../components/BottomSheet';
+import Toast from '../components/Toast';
+import AnimatedEnter from '../components/AnimatedEnter';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
 export default function AcessibilidadeScreen({ navigation }) {
-  const { config, setFontScale, setHighContrast, setDarkMode, scale, activeColors: c } = useAccessibility();
+  const { config, setFontScale, setHighContrast, setDarkMode, resetConfig, scale, activeColors: c } = useAccessibility();
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
 
   const ESCALAS = [
     { valor: 1, label: 'Padrão' },
@@ -15,21 +20,23 @@ export default function AcessibilidadeScreen({ navigation }) {
     { valor: 1.3, label: 'Muito grande' },
   ];
 
+  function executarReset() {
+    resetConfig();
+    setConfirmVisible(false);
+    setToast({ visible: true, message: 'Preferências restauradas.', type: 'success' });
+  }
+
   function restaurarPadrao() {
+    if (Platform.OS === 'web') {
+      setConfirmVisible(true);
+      return;
+    }
     Alert.alert(
       'Restaurar padrões',
       'Isso vai redefinir fonte, contraste e modo escuro para os valores originais.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Restaurar',
-          style: 'destructive',
-          onPress: () => {
-            setFontScale(1);
-            setHighContrast(false);
-            setDarkMode(false);
-          },
-        },
+        { text: 'Restaurar', style: 'destructive', onPress: executarReset },
       ]
     );
   }
@@ -40,6 +47,7 @@ export default function AcessibilidadeScreen({ navigation }) {
       <ScrollView
         showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 12 }}>
 
+        <AnimatedEnter index={0}>
         <View style={[styles.section, { backgroundColor: c.white, borderColor: c.border }]}>
           <Text style={[styles.title, { fontSize: scale(15), color: c.primary }]}>
             Tamanho da fonte
@@ -81,7 +89,9 @@ export default function AcessibilidadeScreen({ navigation }) {
             </Text>
           </View>
         </View>
+        </AnimatedEnter>
 
+        <AnimatedEnter index={1}>
         <View style={[styles.section, { backgroundColor: c.white, borderColor: c.border }]}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -99,7 +109,9 @@ export default function AcessibilidadeScreen({ navigation }) {
             />
           </View>
         </View>
+        </AnimatedEnter>
 
+        <AnimatedEnter index={2}>
         <View style={[styles.section, { backgroundColor: c.white, borderColor: c.border }]}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -126,7 +138,9 @@ export default function AcessibilidadeScreen({ navigation }) {
             />
           </View>
         </View>
+        </AnimatedEnter>
 
+        <AnimatedEnter index={3}>
         <View style={[styles.infoBox, { backgroundColor: c.accent }]}>
           <Feather name="info" size={16} color={c.primary} />
           <Text style={[styles.infoText, { fontSize: scale(12), color: c.textPrimary }]}>
@@ -143,8 +157,39 @@ export default function AcessibilidadeScreen({ navigation }) {
             Restaurar padrões
           </Text>
         </TouchableOpacity>
+        </AnimatedEnter>
 
       </ScrollView>
+
+      <BottomSheet visible={confirmVisible} onClose={() => setConfirmVisible(false)}>
+        <View style={[styles.confirmSheet, { backgroundColor: c.white }]}>
+          <Text style={[styles.confirmTitle, { color: c.textPrimary, fontSize: scale(16) }]}>Restaurar padrões</Text>
+          <Text style={[styles.confirmMsg, { color: c.textSecondary, fontSize: scale(13) }]}>
+            Isso vai redefinir fonte, contraste e modo escuro para os valores originais.
+          </Text>
+          <View style={styles.confirmRow}>
+            <TouchableOpacity
+              style={[styles.confirmBtn, { backgroundColor: c.surface, borderColor: c.border }]}
+              onPress={() => setConfirmVisible(false)}
+            >
+              <Text style={[styles.confirmBtnText, { color: c.textPrimary, fontSize: scale(14) }]}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.confirmBtn, { backgroundColor: '#dc2626', borderColor: '#dc2626' }]}
+              onPress={executarReset}
+            >
+              <Text style={[styles.confirmBtnText, { color: '#fff', fontSize: scale(14) }]}>Restaurar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </BottomSheet>
+
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={() => setToast((t) => ({ ...t, visible: false }))}
+      />
     </View>
   );
 }
@@ -176,4 +221,13 @@ const styles = StyleSheet.create({
     marginTop: 12, paddingVertical: 12, borderRadius: 10, borderWidth: 1,
   },
   resetText: {},
+  confirmSheet: { borderRadius: 20, padding: 20 },
+  confirmTitle: { fontWeight: '800', marginBottom: 8 },
+  confirmMsg: { marginBottom: 16, lineHeight: 18 },
+  confirmRow: { flexDirection: 'row', gap: 10 },
+  confirmBtn: {
+    flex: 1, paddingVertical: 12, borderRadius: 10,
+    alignItems: 'center', borderWidth: 1,
+  },
+  confirmBtnText: { fontWeight: '700' },
 });

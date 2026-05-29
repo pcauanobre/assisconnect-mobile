@@ -4,6 +4,9 @@
 =====================================================
 
 
+
+
+
 1. [47c4d5b] Configurar estrutura base do projeto mobile com navegacao e servicos
    Setup do React Native/Expo, navegacao Stack + Tabs, Axios,
    servicos de API, tema de cores, SafeAreaProvider.

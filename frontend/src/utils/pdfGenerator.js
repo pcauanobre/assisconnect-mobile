@@ -1,4 +1,4 @@
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 
 // Carregamento defensivo - expo-print e expo-sharing podem nao estar instalados
 let Print = null;
@@ -25,31 +25,166 @@ function calcularIdade(dataNasc) {
   return idade;
 }
 
-const estiloBase = `
-  body { font-family: -apple-system, sans-serif; padding: 30px; color: #2c1a0f; }
-  h1 { color: #3D1F0C; font-size: 24px; margin-bottom: 4px; border-bottom: 3px solid #3D1F0C; padding-bottom: 8px; }
-  h2 { color: #3D1F0C; font-size: 17px; margin-top: 22px; margin-bottom: 10px; }
-  .header { text-align: center; margin-bottom: 20px; }
-  .logo { width: 60px; height: 60px; border-radius: 30px; background: #3D1F0C; color: #fff;
-          display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 10px; }
-  .subtitle { color: #6b5a52; font-size: 13px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 13px; }
-  td.label { font-weight: 700; color: #6b5a52; width: 40%; }
-  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
-  .stat-card { background: #f2eeec; padding: 14px; border-radius: 8px; text-align: center; }
-  .stat-value { font-size: 22px; font-weight: 800; color: #3D1F0C; }
-  .stat-label { font-size: 11px; color: #6b5a52; margin-top: 3px; }
-  .footer { margin-top: 30px; padding-top: 14px; border-top: 1px solid #ddd; color: #6b5a52; font-size: 11px; text-align: center; }
-  .status { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; color: #fff; }
-  .status-ativo { background: #16a34a; }
-  .status-inativo { background: #f59e0b; }
-  .status-falecido { background: #6b5a52; }
+function notify(onFeedback, type, title, message) {
+  if (typeof onFeedback === 'function') {
+    onFeedback({ type, title, message });
+  }
+}
+
+async function entregarPDF(html, fallbackName, onFeedback) {
+  if (Platform.OS === 'web') {
+    if (Print?.printAsync) {
+      try {
+        await Print.printAsync({ html });
+        return;
+      } catch {
+        // fallback abaixo
+      }
+    }
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${fallbackName}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return;
+  }
+
+  try {
+    const { uri } = await Print.printToFileAsync({ html });
+    if (Sharing && (await Sharing.isAvailableAsync())) {
+      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+    } else {
+      notify(onFeedback, 'success', 'PDF gerado', `Arquivo salvo em: ${uri}`);
+    }
+  } catch (e) {
+    notify(onFeedback, 'error', 'Falha ao gerar PDF', String(e));
+  }
+}
+
+// Paleta compartilhada entre templates — espelha o tema do app
+const PALETA = {
+  primary: '#3D1F0C',
+  primaryDark: '#2c1a0f',
+  text: '#1f1410',
+  textMuted: '#6b5a52',
+  surface: '#faf7f5',
+  surfaceAlt: '#f2eeec',
+  border: '#e3d8d2',
+  ativo: '#16a34a',
+  inativo: '#f59e0b',
+  falecido: '#6b5a52',
+  novo: '#0ea5e9',
+};
+
+function headerStrip(titulo, subtitulo) {
+  return `
+    <div class="cabecalho-strip">
+      <div class="strip-marca">
+        <div class="strip-logo">AC</div>
+        <div class="strip-textos">
+          <div class="strip-titulo">${titulo}</div>
+          <div class="strip-subtitulo">${subtitulo}</div>
+        </div>
+      </div>
+      <div class="strip-data">${dataFormatada()}</div>
+    </div>
+  `;
+}
+
+const cssBase = `
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Inter", Roboto, Helvetica, Arial, sans-serif;
+    color: ${PALETA.text};
+    padding: 28px 32px;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .cabecalho-strip {
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(135deg, ${PALETA.primary} 0%, ${PALETA.primaryDark} 100%);
+    color: #fff;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 22px;
+  }
+  .strip-marca { display: flex; align-items: center; gap: 14px; }
+  .strip-logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 16px; letter-spacing: 1px;
+  }
+  .strip-titulo { font-size: 17px; font-weight: 800; line-height: 1.2; }
+  .strip-subtitulo { font-size: 11px; opacity: 0.85; margin-top: 2px; letter-spacing: 0.2px; }
+  .strip-data { font-size: 11px; opacity: 0.85; }
+  h2 {
+    color: ${PALETA.primary}; font-size: 14px; font-weight: 800;
+    margin-top: 22px; margin-bottom: 10px;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    padding-bottom: 6px; border-bottom: 2px solid ${PALETA.border};
+  }
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  }
+  .stat-card {
+    background: ${PALETA.surface};
+    border-left: 4px solid ${PALETA.primary};
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .stat-card.ativo { border-left-color: ${PALETA.ativo}; }
+  .stat-card.inativo { border-left-color: ${PALETA.inativo}; }
+  .stat-card.falecido { border-left-color: ${PALETA.falecido}; }
+  .stat-card.novo { border-left-color: ${PALETA.novo}; }
+  .stat-value { font-size: 22px; font-weight: 800; color: ${PALETA.primary}; line-height: 1.1; }
+  .stat-card.ativo .stat-value { color: ${PALETA.ativo}; }
+  .stat-card.inativo .stat-value { color: ${PALETA.inativo}; }
+  .stat-card.falecido .stat-value { color: ${PALETA.falecido}; }
+  .stat-card.novo .stat-value { color: ${PALETA.novo}; }
+  .stat-label { font-size: 10px; color: ${PALETA.textMuted}; margin-top: 4px; letter-spacing: 0.3px; text-transform: uppercase; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  td { padding: 8px 10px; border-bottom: 1px solid ${PALETA.border}; font-size: 12px; }
+  td.label { font-weight: 700; color: ${PALETA.textMuted}; width: 40%; }
+  .barra-genero {
+    display: flex; width: 100%; height: 14px; border-radius: 8px;
+    overflow: hidden; margin-top: 8px; border: 1px solid ${PALETA.border};
+  }
+  .barra-fem { background: #ec4899; }
+  .barra-masc { background: #3b82f6; }
+  .barra-legenda {
+    display: flex; gap: 18px; margin-top: 8px; font-size: 11px; color: ${PALETA.textMuted};
+  }
+  .barra-legenda .dot {
+    display: inline-block; width: 10px; height: 10px; border-radius: 5px; margin-right: 6px; vertical-align: middle;
+  }
+  .obs-box {
+    background: ${PALETA.surfaceAlt}; border-radius: 8px;
+    padding: 12px 14px; font-size: 12px; line-height: 1.55; color: ${PALETA.text};
+  }
+  .status {
+    display: inline-block; padding: 2px 9px; border-radius: 10px;
+    font-size: 10px; font-weight: 700; color: #fff; letter-spacing: 0.3px;
+  }
+  .status-ativo { background: ${PALETA.ativo}; }
+  .status-inativo { background: ${PALETA.inativo}; }
+  .status-falecido { background: ${PALETA.falecido}; }
+  .footer {
+    margin-top: 28px; padding-top: 12px;
+    border-top: 1px solid ${PALETA.border};
+    color: ${PALETA.textMuted}; font-size: 10px; text-align: center;
+    letter-spacing: 0.2px;
+  }
 `;
 
-export async function gerarPDFRelatorio(relatorio, mes, ano) {
-  if (!modulosDisponiveis()) {
-    Alert.alert('PDF nao disponivel', 'Instale: npx expo install expo-print expo-sharing');
+export async function gerarPDFRelatorio(relatorio, mes, ano, onFeedback) {
+  if (!modulosDisponiveis() && Platform.OS !== 'web') {
+    notify(onFeedback, 'error', 'PDF nao disponivel', 'Instale: npx expo install expo-print expo-sharing');
     return;
   }
 
@@ -59,58 +194,60 @@ export async function gerarPDFRelatorio(relatorio, mes, ano) {
   const stats = relatorio?.estatisticas || relatorio || {};
   const idosos = relatorio?.idosos || [];
   const obs = relatorio?.observacoes || '';
+  const pctF = Number(stats.percentualFeminino || 0);
+  const pctM = Number(stats.percentualMasculino || 0);
 
   const html = `
     <!DOCTYPE html>
-    <html><head><meta charset="utf-8"><style>${estiloBase}</style></head>
+    <html><head><meta charset="utf-8"><style>${cssBase}</style></head>
     <body>
-      <div class="header">
-        <div class="logo">🏥</div>
-        <h1>Relatorio Mensal — ${MESES[mes - 1]} / ${ano}</h1>
-        <div class="subtitle">AssisConnect — Gerado em ${dataFormatada()}</div>
-      </div>
+      ${headerStrip(`Relatorio Mensal — ${MESES[mes - 1]} / ${ano}`, 'AssisConnect — Gestao de Lar de Idosos')}
 
-      <h2>Estatisticas</h2>
+      <h2>Indicadores do mes</h2>
       <div class="stats">
         <div class="stat-card">
           <div class="stat-value">${stats.quantidadeIdosos || 0}</div>
-          <div class="stat-label">Total de Idosos</div>
+          <div class="stat-label">Total</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card ativo">
           <div class="stat-value">${stats.idososAtivos || 0}</div>
           <div class="stat-label">Ativos</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card inativo">
           <div class="stat-value">${stats.idososInativos || 0}</div>
           <div class="stat-label">Inativos</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card falecido">
           <div class="stat-value">${stats.idososFalecidos || 0}</div>
           <div class="stat-label">Falecidos</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card novo">
           <div class="stat-value">${stats.novosCadastros || 0}</div>
-          <div class="stat-label">Novos Cadastros</div>
+          <div class="stat-label">Novos no mes</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">${(stats.mediaIdade || 0).toFixed(1)}</div>
-          <div class="stat-label">Media de Idade</div>
+          <div class="stat-value">${(Number(stats.mediaIdade) || 0).toFixed(1)}</div>
+          <div class="stat-label">Media de idade</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">${stats.idosoMaisVelho || 0}</div>
-          <div class="stat-label">Idade Mais Alta</div>
+          <div class="stat-value">${stats.idosoMaisVelho || '-'}</div>
+          <div class="stat-label">Mais velho</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">${stats.idosoMaisNovo || 0}</div>
-          <div class="stat-label">Idade Mais Baixa</div>
+          <div class="stat-value">${stats.idosoMaisNovo || '-'}</div>
+          <div class="stat-label">Mais novo</div>
         </div>
       </div>
 
-      <h2>Distribuicao por Genero</h2>
-      <table>
-        <tr><td class="label">Feminino</td><td>${(stats.percentualFeminino || 0).toFixed(1)}%</td></tr>
-        <tr><td class="label">Masculino</td><td>${(stats.percentualMasculino || 0).toFixed(1)}%</td></tr>
-      </table>
+      <h2>Distribuicao por genero</h2>
+      <div class="barra-genero">
+        ${pctF > 0 ? `<div class="barra-fem" style="flex:${pctF};"></div>` : ''}
+        ${pctM > 0 ? `<div class="barra-masc" style="flex:${pctM};"></div>` : ''}
+      </div>
+      <div class="barra-legenda">
+        <span><span class="dot" style="background:#ec4899;"></span>Feminino — ${pctF.toFixed(1)}%</span>
+        <span><span class="dot" style="background:#3b82f6;"></span>Masculino — ${pctM.toFixed(1)}%</span>
+      </div>
 
       ${idosos.length > 0 ? `
         <h2>Residentes (${idosos.length})</h2>
@@ -131,44 +268,23 @@ export async function gerarPDFRelatorio(relatorio, mes, ano) {
 
       ${obs ? `
         <h2>Observacoes</h2>
-        <p style="font-size: 13px; line-height: 1.6;">${obs.replace(/\n/g, '<br>')}</p>
+        <div class="obs-box">${obs.replace(/\n/g, '<br>')}</div>
       ` : ''}
 
       <div class="footer">
-        AssisConnect v1.0 — Documento gerado automaticamente<br>
+        AssisConnect v1.0 — Documento gerado automaticamente em ${dataFormatada()}<br>
         UNIFOR — N393 Projeto Aplicado Multiplataforma
       </div>
     </body></html>
   `;
 
-  if (Platform.OS === 'web') {
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `relatorio-${String(mes).padStart(2, '0')}-${ano}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    return;
-  }
-
-  try {
-    const { uri } = await Print.printToFileAsync({ html });
-    if (Sharing && (await Sharing.isAvailableAsync())) {
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-    } else {
-      Alert.alert('PDF gerado', `Arquivo salvo em: ${uri}`);
-    }
-  } catch (e) {
-    Alert.alert('Erro', 'Falha ao gerar PDF: ' + String(e));
-  }
+  const nome = `relatorio-${String(mes).padStart(2, '0')}-${ano}`;
+  await entregarPDF(html, nome, onFeedback);
 }
 
-export async function gerarPDFFichaIdoso(idoso, registrosSaude = [], medicamentos = [], visitas = []) {
+export async function gerarPDFFichaIdoso(idoso, registrosSaude = [], medicamentos = [], visitas = [], onFeedback) {
   if (!modulosDisponiveis() && Platform.OS !== 'web') {
-    Alert.alert('PDF nao disponivel', 'Instale: npx expo install expo-print expo-sharing');
+    notify(onFeedback, 'error', 'PDF nao disponivel', 'Instale: npx expo install expo-print expo-sharing');
     return;
   }
 
@@ -179,83 +295,85 @@ export async function gerarPDFFichaIdoso(idoso, registrosSaude = [], medicamento
   };
 
   const statusLabel = idoso.falecido ? 'Falecido' : idoso.inativo ? 'Inativo' : 'Ativo';
-  const statusBg = idoso.falecido ? '#6b5a52' : idoso.inativo ? '#f59e0b' : '#16a34a';
-
+  const statusClass = idoso.falecido ? 'status-falecido' : idoso.inativo ? 'status-inativo' : 'status-ativo';
   const iniciais = (idoso.nome || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   const fotoHtml = idoso.fotoUrl
-    ? `<img src="${idoso.fotoUrl}" style="width:120px;height:155px;object-fit:cover;border-radius:8px;border:3px solid #3D1F0C;" />`
-    : `<div style="width:120px;height:155px;border-radius:8px;border:3px solid #3D1F0C;background:#f2eeec;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:800;color:#3D1F0C;letter-spacing:2px;">${iniciais}</div>`;
+    ? `<img src="${idoso.fotoUrl}" class="ficha-foto" />`
+    : `<div class="ficha-foto ficha-foto-placeholder">${iniciais}</div>`;
 
   const ultSaude = (Array.isArray(registrosSaude) ? registrosSaude : []).slice(0, 5);
-  const ultMeds  = (Array.isArray(medicamentos)    ? medicamentos    : []).slice(0, 5);
-  const ultVisitas = (Array.isArray(visitas)        ? visitas         : []).slice(0, 5);
+  const ultMeds = (Array.isArray(medicamentos) ? medicamentos : []).slice(0, 5);
+  const ultVisitas = (Array.isArray(visitas) ? visitas : []).slice(0, 5);
 
-  const estiloFicha = `
+  const cssFicha = `
+    ${cssBase}
     @page { size: A4; margin: 12mm; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #1a1a1a; }
-    .cabecalho { display: flex; align-items: center; border-bottom: 2.5px solid #3D1F0C; padding-bottom: 7px; margin-bottom: 9px; }
-    .cab-logo { width: 38px; height: 38px; background: #3D1F0C; border-radius: 50%; color: #fff; font-size: 20px; display: flex; align-items: center; justify-content: center; margin-right: 9px; flex-shrink: 0; }
-    .cab-titulo { flex: 1; }
-    .cab-titulo h1 { font-size: 13pt; color: #3D1F0C; }
-    .cab-titulo p { font-size: 7.5pt; color: #666; margin-top: 1px; }
-    .cab-data { font-size: 7.5pt; color: #666; text-align: right; }
-    .topo { display: flex; gap: 14px; margin-bottom: 9px; }
-    .foto-col { flex-shrink: 0; text-align: center; }
-    .foto-nome { font-size: 9.5pt; font-weight: bold; color: #3D1F0C; margin-top: 6px; max-width: 126px; word-wrap: break-word; }
-    .status-badge { display: inline-block; margin-top: 4px; padding: 2px 10px; border-radius: 10px; font-size: 7.5pt; font-weight: bold; color: #fff; }
-    .info-col { flex: 1; }
-    .sec-title { font-size: 8pt; font-weight: bold; color: #3D1F0C; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid #d4a57a; padding-bottom: 2px; margin-bottom: 4px; margin-top: 7px; }
-    .info-col .sec-title:first-child { margin-top: 0; }
+    body { padding: 22px 26px; font-size: 11px; }
+    .strip-titulo { font-size: 15px; }
+    h2 { margin-top: 14px; font-size: 12px; }
+    .topo { display: flex; gap: 16px; margin-bottom: 4px; }
+    .ficha-foto {
+      width: 120px; height: 150px; border-radius: 10px;
+      border: 3px solid ${PALETA.primary};
+      object-fit: cover; flex-shrink: 0;
+    }
+    .ficha-foto-placeholder {
+      background: ${PALETA.surfaceAlt};
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px; font-weight: 800; color: ${PALETA.primary};
+      letter-spacing: 2px;
+    }
+    .ficha-nome { font-size: 13px; font-weight: 800; color: ${PALETA.primary}; margin-top: 6px; max-width: 126px; word-wrap: break-word; }
+    .ficha-foto-col { text-align: center; flex-shrink: 0; }
+    .ficha-info-col { flex: 1; }
     .kv { width: 100%; border-collapse: collapse; }
-    .kv td { padding: 1.5px 3px; font-size: 8pt; vertical-align: top; }
-    .kv td.k { font-weight: bold; color: #6b5a52; white-space: nowrap; width: 36%; }
-    .dt { width: 100%; border-collapse: collapse; margin-top: 2px; }
-    .dt th { background: #3D1F0C; color: #fff; padding: 3px 5px; font-size: 7.5pt; text-align: left; font-weight: bold; }
-    .dt td { padding: 2.5px 5px; font-size: 8pt; border-bottom: 1px solid #eee; vertical-align: top; }
-    .dt tr:nth-child(even) td { background: #faf7f5; }
-    .vazio { font-size: 8pt; color: #999; font-style: italic; padding: 4px 5px; }
-    .tag-ativo { display: inline-block; padding: 1px 7px; border-radius: 8px; font-size: 7pt; font-weight: bold; color: #fff; background: #16a34a; }
-    .tag-inativo { display: inline-block; padding: 1px 7px; border-radius: 8px; font-size: 7pt; font-weight: bold; color: #fff; background: #999; }
-    .rodape { margin-top: 9px; border-top: 1px solid #ddd; padding-top: 6px; text-align: center; font-size: 7pt; color: #999; }
+    .kv td { padding: 3px 4px; font-size: 10px; vertical-align: top; border-bottom: none; }
+    .kv td.k { font-weight: 700; color: ${PALETA.textMuted}; white-space: nowrap; width: 28%; text-transform: uppercase; letter-spacing: 0.3px; }
+    .dt { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    .dt th {
+      background: ${PALETA.primary}; color: #fff;
+      padding: 5px 7px; font-size: 10px; text-align: left; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .dt td { padding: 4px 7px; font-size: 10px; border-bottom: 1px solid ${PALETA.border}; vertical-align: top; }
+    .dt tr:nth-child(even) td { background: ${PALETA.surface}; }
+    .vazio { font-size: 10px; color: ${PALETA.textMuted}; font-style: italic; padding: 6px 7px; }
+    .tag-ativo, .tag-inativo {
+      display: inline-block; padding: 1px 8px; border-radius: 8px;
+      font-size: 9px; font-weight: 700; color: #fff; letter-spacing: 0.3px;
+    }
+    .tag-ativo { background: ${PALETA.ativo}; }
+    .tag-inativo { background: ${PALETA.textMuted}; }
   `;
 
   const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><style>${estiloFicha}</style></head>
+<html><head><meta charset="utf-8"><style>${cssFicha}</style></head>
 <body>
-
-<div class="cabecalho">
-  <div class="cab-logo">&#128100;</div>
-  <div class="cab-titulo">
-    <h1>Ficha do Idoso — AssisConnect</h1>
-    <p>Documento de uso interno da instituicao</p>
-  </div>
-  <div class="cab-data">Gerado em ${dataFormatada()}</div>
-</div>
+${headerStrip('Ficha do Idoso', 'Documento de uso interno da instituicao')}
 
 <div class="topo">
-  <div class="foto-col">
+  <div class="ficha-foto-col">
     ${fotoHtml}
-    <div class="foto-nome">${idoso.nome || '-'}</div>
-    <span class="status-badge" style="background:${statusBg};">${statusLabel}</span>
+    <div class="ficha-nome">${idoso.nome || '-'}</div>
+    <span class="status ${statusClass}" style="margin-top:6px; display:inline-block;">${statusLabel}</span>
   </div>
-  <div class="info-col">
-    <div class="sec-title">Dados Pessoais</div>
+  <div class="ficha-info-col">
+    <h2 style="margin-top:0;">Dados pessoais</h2>
     <table class="kv">
       <tr><td class="k">Sexo</td><td>${idoso.sexo || '-'}</td><td class="k">Nascimento</td><td>${fmt(idoso.dataNascimento)}</td></tr>
-      <tr><td class="k">Idade</td><td>${calcularIdade(idoso.dataNascimento)} anos</td><td class="k">Estado Civil</td><td>${idoso.estadoCivil || '-'}</td></tr>
+      <tr><td class="k">Idade</td><td>${calcularIdade(idoso.dataNascimento)} anos</td><td class="k">Est. Civil</td><td>${idoso.estadoCivil || '-'}</td></tr>
       <tr><td class="k">RG</td><td>${idoso.rg || '-'}</td><td class="k">CPF</td><td>${idoso.cpf || '-'}</td></tr>
     </table>
 
-    <div class="sec-title">Contato</div>
+    <h2>Contato</h2>
     <table class="kv">
       <tr><td class="k">Telefone</td><td>${idoso.telefoneIdoso || '-'}</td><td class="k">Responsavel</td><td>${idoso.responsavel || '-'}</td></tr>
-      <tr><td class="k">Tel. Resp.</td><td>${idoso.telefoneResponsavel || '-'}</td><td class="k">Plano Saude</td><td>${idoso.planoSaude || '-'}</td></tr>
+      <tr><td class="k">Tel. Resp.</td><td>${idoso.telefoneResponsavel || '-'}</td><td class="k">Plano</td><td>${idoso.planoSaude || '-'}</td></tr>
       <tr><td class="k">Endereco</td><td colspan="3">${[idoso.endereco, idoso.cidade, idoso.estado, idoso.cep].filter(Boolean).join(', ') || '-'}</td></tr>
     </table>
 
-    <div class="sec-title">Condicoes de Saude</div>
+    <h2>Condicoes de saude</h2>
     <table class="kv">
       <tr><td class="k">Doencas</td><td colspan="3">${idoso.doencas || '-'}</td></tr>
       <tr><td class="k">Alergias</td><td colspan="3">${idoso.alergias || '-'}</td></tr>
@@ -264,7 +382,7 @@ export async function gerarPDFFichaIdoso(idoso, registrosSaude = [], medicamento
   </div>
 </div>
 
-<div class="sec-title">Ultimos Registros de Saude</div>
+<h2>Ultimos registros de saude</h2>
 ${ultSaude.length > 0 ? `
 <table class="dt">
   <thead><tr><th>Data</th><th>Peso</th><th>Pressao</th><th>Temp.</th><th>Glicemia</th><th>Observacoes</th></tr></thead>
@@ -280,7 +398,7 @@ ${ultSaude.length > 0 ? `
   </tbody>
 </table>` : `<div class="vazio">Nenhum registro de saude cadastrado.</div>`}
 
-<div class="sec-title">Medicamentos</div>
+<h2>Medicamentos</h2>
 ${ultMeds.length > 0 ? `
 <table class="dt">
   <thead><tr><th>Medicamento</th><th>Dosagem</th><th>Horarios</th><th>Frequencia</th><th>Situacao</th></tr></thead>
@@ -295,7 +413,7 @@ ${ultMeds.length > 0 ? `
   </tbody>
 </table>` : `<div class="vazio">Nenhum medicamento cadastrado.</div>`}
 
-<div class="sec-title">Ultimas Visitas</div>
+<h2>Ultimas visitas</h2>
 ${ultVisitas.length > 0 ? `
 <table class="dt">
   <thead><tr><th>Data</th><th>Visitante</th><th>Parentesco</th><th>Observacoes</th></tr></thead>
@@ -309,33 +427,12 @@ ${ultVisitas.length > 0 ? `
   </tbody>
 </table>` : `<div class="vazio">Nenhuma visita registrada.</div>`}
 
-<div class="rodape">
+<div class="footer">
   AssisConnect v1.0 — Ficha gerada automaticamente em ${dataFormatada()} &nbsp;|&nbsp; UNIFOR — N393 Projeto Aplicado Multiplataforma
 </div>
 
 </body></html>`;
 
-  if (Platform.OS === 'web') {
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ficha-${(idoso.nome || 'idoso').replace(/\s+/g, '-').toLowerCase()}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    return;
-  }
-
-  try {
-    const { uri } = await Print.printToFileAsync({ html });
-    if (Sharing && (await Sharing.isAvailableAsync())) {
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-    } else {
-      Alert.alert('PDF gerado', `Arquivo salvo em: ${uri}`);
-    }
-  } catch (e) {
-    Alert.alert('Erro', 'Falha ao gerar PDF: ' + String(e));
-  }
+  const nome = `ficha-${(idoso.nome || 'idoso').replace(/\s+/g, '-').toLowerCase()}`;
+  await entregarPDF(html, nome, onFeedback);
 }

@@ -12,6 +12,7 @@ import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getVisitasPorIdoso, createVisita, deleteVisita } from '../../services/visitaService';
 import LoadingOverlay from '../../components/LoadingOverlay';
+import AnimatedEnter from '../../components/AnimatedEnter';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 import DateInput from '../../components/DateInput';
 
@@ -78,15 +79,17 @@ export default function VisitasScreen({ route }) {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
-      <View style={[styles.header, { backgroundColor: c.white, borderBottomColor: c.border }]}>
-        <Text style={[styles.subtitle, { color: c.textPrimary }]}>{idosoNome || 'Idoso'}</Text>
-        <Text style={[styles.counter, { color: c.textSecondary }]}>{visitas.length} visita(s)</Text>
-        {diasDesdeUltima !== null && (
-          <Text style={[styles.lastVisit, { color: diasDesdeUltima > 30 ? c.danger : c.success }]}>
-            {diasDesdeUltima === 0 ? 'Visita hoje' : `Última visita há ${diasDesdeUltima} dia(s)`}
-          </Text>
-        )}
-      </View>
+      <AnimatedEnter index={0}>
+        <View style={[styles.header, { backgroundColor: c.white, borderBottomColor: c.border }]}>
+          <Text style={[styles.subtitle, { color: c.textPrimary }]}>{idosoNome || 'Idoso'}</Text>
+          <Text style={[styles.counter, { color: c.textSecondary }]}>{visitas.length} visita(s)</Text>
+          {diasDesdeUltima !== null && (
+            <Text style={[styles.lastVisit, { color: diasDesdeUltima > 30 ? c.danger : c.success }]}>
+              {diasDesdeUltima === 0 ? 'Visita hoje' : `Última visita há ${diasDesdeUltima} dia(s)`}
+            </Text>
+          )}
+        </View>
+      </AnimatedEnter>
 
       <FlatList
         data={visitas}
@@ -99,7 +102,8 @@ export default function VisitasScreen({ route }) {
             <Text style={[styles.emptyText, { color: c.textSecondary }]}>Nenhuma visita registrada</Text>
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
+          <AnimatedEnter index={index + 1}>
           <View style={[styles.card, { backgroundColor: c.white }]}>
             <View style={[styles.iconCircle, { backgroundColor: c.accent }]}>
               <Feather name="user-check" size={18} color={c.primary} />
@@ -117,6 +121,7 @@ export default function VisitasScreen({ route }) {
               <Feather name="trash-2" size={16} color={c.danger} />
             </TouchableOpacity>
           </View>
+          </AnimatedEnter>
         )}
       />
 

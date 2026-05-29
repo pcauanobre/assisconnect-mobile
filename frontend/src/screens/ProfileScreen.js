@@ -12,6 +12,7 @@ import { useAccessibility } from '../contexts/AccessibilityContext';
 import AdminUsuariosModal from '../components/AdminUsuariosModal';
 import Toast from '../components/Toast';
 import FeedbackDialog from '../components/FeedbackDialog';
+import AnimatedEnter from '../components/AnimatedEnter';
 import useFeedback from '../hooks/useFeedback';
 
 export default function ProfileScreen({ navigation }) {
@@ -78,6 +79,7 @@ export default function ProfileScreen({ navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <AnimatedEnter index={0} style={{ width: '100%', alignItems: 'center' }}>
       <Pressable onPress={pickImage} style={styles.photoContainer}>
         {fotoBase64 ? (
           <Image source={{ uri: fotoBase64 }} style={styles.photo} />
@@ -88,7 +90,9 @@ export default function ProfileScreen({ navigation }) {
         )}
         <Text style={[styles.photoLabel, { color: c.textSecondary, fontSize: scale(13) }]}>Alterar foto</Text>
       </Pressable>
+      </AnimatedEnter>
 
+      <AnimatedEnter index={1} style={{ width: '100%' }}>
       <Text style={[styles.label, { color: c.textPrimary, fontSize: scale(14) }]}>Nome</Text>
       <TextInput
         value={nome}
@@ -127,7 +131,9 @@ export default function ProfileScreen({ navigation }) {
           <Text style={[styles.btnText, { fontSize: scale(16) }]}>Salvar</Text>
         )}
       </Pressable>
+      </AnimatedEnter>
 
+      <AnimatedEnter index={2} style={{ width: '100%' }}>
       <View style={styles.menuSection}>
         <Text style={[styles.menuTitle, { color: c.textSecondary, fontSize: scale(13) }]}>Configurações</Text>
 
@@ -215,6 +221,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={[styles.logoutText, { fontSize: scale(14) }]}>Sair</Text>
         </Pressable>
       </View>
+      </AnimatedEnter>
     </ScrollView>
 
     <AdminUsuariosModal visible={showAdmin} onClose={() => setShowAdmin(false)} />

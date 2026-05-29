@@ -10,6 +10,7 @@ import LoadingOverlay from '../../components/LoadingOverlay';
 import Toast from '../../components/Toast';
 import FeedbackDialog from '../../components/FeedbackDialog';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import AnimatedEnter from '../../components/AnimatedEnter';
 import useFeedback from '../../hooks/useFeedback';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 import { gerarPDFFichaIdoso } from '../../utils/pdfGenerator';
@@ -64,6 +65,10 @@ export default function IdosoDetailScreen({ route, navigation }) {
         saudeRes.status === 'fulfilled' ? (saudeRes.value?.data || []).slice(0, 5) : [],
         medsRes.status === 'fulfilled'   ? (medsRes.value?.data  || []).slice(0, 5) : [],
         visitasRes.status === 'fulfilled' ? (visitasRes.value?.data || []).slice(0, 5) : [],
+        ({ type, title, message }) => {
+          if (type === 'error') fb.error(title, message);
+          else fb.success(title, message, 1600);
+        }
       );
     } catch {
       fb.error('Falha ao gerar PDF', 'Não foi possível exportar a ficha.');
@@ -123,6 +128,7 @@ export default function IdosoDetailScreen({ route, navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <AnimatedEnter index={0}>
       <View style={styles.photoSection}>
         {idoso.fotoUrl ? (
           <Image source={{ uri: idoso.fotoUrl }} style={styles.photo} />
@@ -136,7 +142,9 @@ export default function IdosoDetailScreen({ route, navigation }) {
           <Text style={styles.badgeText}>{statusLabel}</Text>
         </View>
       </View>
+      </AnimatedEnter>
 
+      <AnimatedEnter index={1}>
       <View style={styles.quickActionsRow}>
         {quickActions.map((a) => (
           <TouchableOpacity
@@ -151,12 +159,16 @@ export default function IdosoDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         ))}
       </View>
+      </AnimatedEnter>
 
+      <AnimatedEnter index={2}>
       <TouchableOpacity style={[styles.pdfButton, { backgroundColor: c.primary }]} onPress={exportarPDF} disabled={exportando}>
-        <Feather name="file-text" size={16} color="#fff" />
+        <Feather name="download" size={16} color="#fff" />
         <Text style={[styles.pdfButtonText, { fontSize: scale(13) }]}>{exportando ? 'Gerando PDF...' : 'Ficha Completa em PDF'}</Text>
       </TouchableOpacity>
+      </AnimatedEnter>
 
+      <AnimatedEnter index={3}>
       <View style={styles.editDeleteRow}>
         <TouchableOpacity
           style={[styles.editBtn, { backgroundColor: c.white, borderColor: c.border }]}
@@ -173,17 +185,20 @@ export default function IdosoDetailScreen({ route, navigation }) {
           <Text style={[styles.deleteBtnText, { color: c.danger, fontSize: scale(13) }]}>Excluir</Text>
         </TouchableOpacity>
       </View>
+      </AnimatedEnter>
 
       {sections.map((section, si) => (
-        <View key={si} style={[styles.section, { backgroundColor: c.white }]}>
-          <Text style={[styles.sectionTitle, { color: c.primary }]}>{section.title}</Text>
-          {section.fields.map((field, fi) => (
-            <View key={fi} style={[styles.fieldRow, { borderBottomColor: c.surface }]}>
-              <Text style={[styles.fieldLabel, { color: c.textSecondary }]}>{field.label}</Text>
-              <Text style={[styles.fieldValue, { color: c.textPrimary }]}>{field.value || '-'}</Text>
-            </View>
-          ))}
-        </View>
+        <AnimatedEnter key={si} index={4 + si}>
+          <View style={[styles.section, { backgroundColor: c.white }]}>
+            <Text style={[styles.sectionTitle, { color: c.primary }]}>{section.title}</Text>
+            {section.fields.map((field, fi) => (
+              <View key={fi} style={[styles.fieldRow, { borderBottomColor: c.surface }]}>
+                <Text style={[styles.fieldLabel, { color: c.textSecondary }]}>{field.label}</Text>
+                <Text style={[styles.fieldValue, { color: c.textPrimary }]}>{field.value || '-'}</Text>
+              </View>
+            ))}
+          </View>
+        </AnimatedEnter>
       ))}
     </ScrollView>
     <Toast visible={toast.visible} message={toast.message} type={toast.type}
