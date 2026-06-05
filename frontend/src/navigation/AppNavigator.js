@@ -45,29 +45,34 @@ export default function AppNavigator() {
     );
   }
 
-  if (user && !termosAceitos) {
-    return <TermosUsoScreen onAceitar={() => setTermosAceitos(true)} />;
-  }
-
   return (
     <NavigationContainer>
-      {user ? (
-        <RootStack.Navigator>
-          <RootStack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-          <RootStack.Screen name="Profile" component={ProfileScreen}
-            options={{ title: 'Meu Perfil', ...defaultHeader }} />
-          <RootStack.Screen name="Notificacoes" component={NotificacoesScreen}
-            options={{ headerShown: false }} />
-          <RootStack.Screen name="Acessibilidade" component={AcessibilidadeScreen}
-            options={{ headerShown: false }} />
-          <RootStack.Screen name="Sobre" component={SobreScreen}
-            options={{ headerShown: false }} />
-          <RootStack.Screen name="Atividades" component={AtividadesScreen}
-            options={{ headerShown: false }} />
-        </RootStack.Navigator>
-      ) : (
-        <AuthStack />
-      )}
+      <RootStack.Navigator>
+        {!user ? (
+          <RootStack.Screen name="Auth" component={AuthStack} options={{ headerShown: false }} />
+        ) : !termosAceitos ? (
+          <RootStack.Screen 
+            name="Termos" 
+            options={{ headerShown: false }}
+          >
+            {() => <TermosUsoScreen onAceitar={() => setTermosAceitos(true)} />}
+          </RootStack.Screen>
+        ) : (
+          <>
+            <RootStack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+            <RootStack.Screen name="Profile" component={ProfileScreen}
+              options={{ title: 'Meu Perfil', ...defaultHeader }} />
+            <RootStack.Screen name="Notificacoes" component={NotificacoesScreen}
+              options={{ headerShown: false }} />
+            <RootStack.Screen name="Acessibilidade" component={AcessibilidadeScreen}
+              options={{ headerShown: false }} />
+            <RootStack.Screen name="Sobre" component={SobreScreen}
+              options={{ headerShown: false }} />
+            <RootStack.Screen name="Atividades" component={AtividadesScreen}
+              options={{ headerShown: false }} />
+          </>
+        )}
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 }
