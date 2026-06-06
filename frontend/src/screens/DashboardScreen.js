@@ -35,10 +35,9 @@ export default function DashboardScreen({ navigation }) {
       const ano = hoje.getFullYear();
       const mes = hoje.getMonth() + 1;
       const mm = String(mes).padStart(2, '0');
-      const diaAtual = hoje.getDate();
       const diasNoMes = new Date(ano, mes, 0).getDate();
       const inicio = `${ano}-${mm}-01`;
-      const fim = `${ano}-${mm}-${String(diaAtual).padStart(2, '0')}`;
+      const fim = `${ano}-${mm}-${String(diasNoMes).padStart(2, '0')}`;
 
       const [idososRes, anivRes, menuRes, ativRes, usersRes, semVisRes, diasRes] =
         await Promise.allSettled([

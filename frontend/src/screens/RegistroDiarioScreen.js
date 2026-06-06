@@ -44,6 +44,8 @@ export default function RegistroDiarioScreen() {
   const [showConsulta, setShowConsulta] = useState(false);
   const [consultaData, setConsultaData] = useState([]);
   const [consultaDate, setConsultaDate] = useState(new Date().toISOString().split('T')[0]);
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [editPresentes, setEditPresentes] = useState(new Set());
   const consultaPickerRef = useRef(null);
 
   // Toast (validacao de form) + FeedbackDialog (resultados importantes)
@@ -188,11 +190,66 @@ export default function RegistroDiarioScreen() {
     try {
       const res = await getAtividades({ data: dataEscolhida, nome: selectedAtividade });
       const data = res.data || [];
-      const allPresentes = data.flatMap((a) => a.presentes || []);
-      setConsultaData(allPresentes);
+      const presentesNomes = new Set(data.flatMap((a) => (a.presentes || []).map((p) => p.nome)));
+      
+      // Mostrar TODOS os idosos com indicação de presente/ausente
+      const todosComStatus = idosos.map((idoso) => ({
+        nome: idoso.nome,
+        fotoUrl: idoso.fotoUrl,
+        presente: presentesNomes.has(idoso.nome),
+        hora: data.flatMap((a) => a.presentes || [])[0]?.hora || '00:00',
+      }));
+      
+      setConsultaData(todosComStatus);
+      setModoEdicao(false);
       setShowConsulta(true);
     } catch {
       fb.error('Erro ao consultar', 'Não foi possível buscar os registros.');
+    }
+  }
+
+  function iniciarEdicao() {
+    setModoEdicao(true);
+    const presentes = new Set(consultaData.filter((p) => p.presente).map((p) => p.nome));
+    setEditPresentes(presentes);
+  }
+
+  function toggleEditPresente(nome) {
+    setEditPresentes((prev) => {
+      const next = new Set(prev);
+      if (next.has(nome)) next.delete(nome);
+      else next.add(nome);
+      return next;
+    });
+  }
+
+  async function salvarEdicao() {
+    const presentesList = [...editPresentes].map((nome) => {
+      const idoso = idosos.find((i) => i.nome === nome);
+      return { nome, data: consultaDate, hora: '00:00', fotoUrl: idoso?.fotoUrl || '' };
+    });
+
+    try {
+      await saveAtividade({
+        nome: selectedAtividade,
+        dataRegistro: consultaDate,
+        horaRegistro: consultaData[0]?.hora || new Date().toTimeString().split(' ')[0],
+        presentes: presentesList,
+      });
+      fb.success('Registro atualizado!', `${presentesList.length} presença(s) salva(s).`, 1500);
+      
+      // Atualizar consultaData com novo status
+      const todosComStatus = idosos.map((idoso) => ({
+        nome: idoso.nome,
+        fotoUrl: idoso.fotoUrl,
+        presente: editPresentes.has(idoso.nome),
+        hora: consultaData[0]?.hora || '00:00',
+      }));
+      setConsultaData(todosComStatus);
+      setModoEdicao(false);
+      loadData();
+    } catch {
+      fb.error('Erro ao salvar', 'Não foi possível atualizar o registro.');
     }
   }
 
@@ -219,13 +276,7 @@ export default function RegistroDiarioScreen() {
 
             {/* Data com ícone de calendário */}
             <View style={styles.contextItem}>
-              <DateInput
-                value={selectedDate}
-                onChange={setSelectedDate}
-                iconOnly
-                iconColor="rgba(255,255,255,0.9)"
-                iconSize={22}
-              />
+              <Feather name="calendar" size={22} color="rgba(255,255,255,0.9)" />
               <View style={styles.contextTextBlock}>
                 <Text style={[styles.contextLabel, { fontSize: scale(10) }]}>Data</Text>
                 <Text style={[styles.contextDateText, { fontSize: scale(14) }]}>{formatDateLabel(selectedDate)}</Text>
@@ -441,32 +492,73 @@ export default function RegistroDiarioScreen() {
       </BottomSheet>
 
       {/* Modal: consulta */}
-      <BottomSheet visible={showConsulta} onClose={() => setShowConsulta(false)}>
+      <BottomSheet visible={showConsulta} onClose={() => { setShowConsulta(false); setModoEdicao(false); }}>
         <View style={[styles.modalContent, { backgroundColor: c.white }]}>
           <View style={[styles.modalHeader, { borderBottomColor: c.border }]}>
             <Text style={[styles.modalTitle, { color: c.textPrimary, fontSize: scale(17) }]}>
               {selectedAtividade} — {formatDateLabel(consultaDate)}
             </Text>
-            <Pressable onPress={() => setShowConsulta(false)} hitSlop={8}>
+            <Pressable onPress={() => { setShowConsulta(false); setModoEdicao(false); }} hitSlop={8}>
               <Feather name="x" size={20} color={c.textSecondary} />
             </Pressable>
           </View>
-          <View style={styles.modalBody}>
-            {consultaData.length > 0 ? (
+          
+          <ScrollView 
+            style={styles.modalBodyScroll}
+            contentContainerStyle={styles.modalBody}
+            showsVerticalScrollIndicator={false}
+          >
+            {!modoEdicao && consultaData.length > 0 && (
+              <Pressable style={[styles.editBtn, { backgroundColor: c.primary }]} onPress={iniciarEdicao}>
+                <Feather name="edit-2" size={14} color="#fff" />
+                <Text style={[styles.editBtnText, { fontSize: scale(13) }]}>Editar registro</Text>
+              </Pressable>
+            )}
+            {modoEdicao ? (
+              <View style={{ marginBottom: 12 }}>
+                {idosos.map((idoso) => {
+                  const marcado = editPresentes.has(idoso.nome);
+                  return (
+                    <Pressable
+                      key={idoso.id}
+                      style={[styles.editRow, { backgroundColor: marcado ? c.surface : '#f5f5f5', borderColor: c.border }]}
+                      onPress={() => toggleEditPresente(idoso.nome)}
+                    >
+                      <Feather name={marcado ? 'check-square' : 'square'} size={18} color={marcado ? c.primary : c.textSecondary} />
+                      <Text style={[styles.editRowName, { color: c.textPrimary, fontSize: scale(14) }]}>{idoso.nome}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : consultaData.length > 0 ? (
               consultaData.map((p, i) => (
                 <View key={i} style={[styles.consultaRow, { borderBottomColor: c.border }]}>
-                  <View style={[styles.consultaDot, { backgroundColor: c.success }]} />
+                  <View style={[styles.consultaDot, { backgroundColor: p.presente ? c.success || '#22c55e' : c.danger || '#e5302a' }]} />
                   <Text style={[styles.consultaName, { color: c.textPrimary, fontSize: scale(14) }]}>{p.nome}</Text>
-                  <Text style={[styles.consultaTime, { color: c.textSecondary, fontSize: scale(12) }]}>{p.hora}</Text>
+                  <Text style={[styles.consultaTime, { color: c.textSecondary, fontSize: scale(12) }]}>
+                    {p.presente ? '✓ Presente' : '✗ Ausente'}
+                  </Text>
                 </View>
               ))
             ) : (
               <View style={styles.emptyState}>
                 <Feather name="user-x" size={32} color={c.border} />
-                <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(13) }]}>Nenhuma presença registrada</Text>
+                <Text style={[styles.emptyText, { color: c.textSecondary, fontSize: scale(13) }]}>Nenhum registro neste dia</Text>
               </View>
             )}
-          </View>
+          </ScrollView>
+          
+          {modoEdicao && (
+            <View style={[styles.modalFooter, { borderTopColor: c.border, flexDirection: 'row', gap: 10 }]}>
+              <Pressable style={[styles.editCancel, { backgroundColor: c.surface, borderColor: c.border }]} onPress={() => setModoEdicao(false)}>
+                <Text style={[styles.editCancelText, { color: c.textSecondary, fontSize: scale(14) }]}>Cancelar</Text>
+              </Pressable>
+              <Pressable style={[styles.editSave, { backgroundColor: c.primary }]} onPress={salvarEdicao}>
+                <Feather name="save" size={16} color="#fff" />
+                <Text style={[styles.editSaveText, { fontSize: scale(14) }]}>Salvar</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </BottomSheet>
     </View>
@@ -556,7 +648,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1,
   },
-  modalBody: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
+  modalBodyScroll: { maxHeight: 400 },
+  modalBody: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 20 },
   modalTitle: { fontWeight: '800', fontSize: 17 },
   modalOption: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -564,13 +657,35 @@ const styles = StyleSheet.create({
   },
   modalOptionText: {},
   modalFooter: {
-    paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1,
+    paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1,
   },
   modalSaveBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 14, borderRadius: 12,
   },
   modalSaveBtnText: { color: '#fff', fontWeight: '800' },
+
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: 10, marginBottom: 16,
+  },
+  editBtnText: { color: '#fff', fontWeight: '600' },
+
+  editRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, marginBottom: 6, borderWidth: 1,
+  },
+  editRowName: { flex: 1, fontWeight: '500' },
+
+  editCancel: {
+    flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1,
+  },
+  editCancelText: { fontWeight: '600' },
+  editSave: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 12, borderRadius: 8,
+  },
+  editSaveText: { color: '#fff', fontWeight: '600' },
 
   consultaRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
