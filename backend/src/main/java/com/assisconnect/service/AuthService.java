@@ -17,13 +17,15 @@ public class AuthService {
 
     public Usuario registrar(Usuario usuario) {
         String login = (usuario.getUsuario() == null) ? "" : usuario.getUsuario().trim();
-        if (login.isBlank() || usuario.getSenha() == null || usuario.getSenha().isBlank()) {
+        String senha = (usuario.getSenha() == null) ? "" : usuario.getSenha().trim();
+        if (login.isBlank() || senha.isBlank()) {
             throw new IllegalArgumentException("Usuário e senha são obrigatórios");
         }
         if (usuarioRepository.existsById(login)) {
             throw new IllegalStateException("Usuário já cadastrado");
         }
         usuario.setUsuario(login);
+        usuario.setSenha(senha);
         return usuarioRepository.save(usuario);
     }
 
@@ -33,7 +35,8 @@ public class AuthService {
 
         Usuario u = opt.get();
         String dbSenha = u.getSenha() == null ? "" : u.getSenha().trim();
-        if (!dbSenha.equals(senha)) return Optional.empty();
+        String inputSenha = senha == null ? "" : senha.trim();
+        if (!dbSenha.equals(inputSenha)) return Optional.empty();
 
         return Optional.of(u);
     }
