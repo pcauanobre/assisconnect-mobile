@@ -11,6 +11,7 @@ import { getAtividadesHoje, getDiasComRegistro } from '../services/atividadeServ
 import { getUsuariosCount } from '../services/usuarioService';
 import { getIdososSemVisita } from '../services/visitaService';
 import StatCard from '../components/StatCard';
+import PageTitle from '../components/PageTitle';
 import AnimatedEnter from '../components/AnimatedEnter';
 import { calcularIdade } from '../utils/helpers';
 
@@ -94,6 +95,7 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.surface }}>
+      <PageTitle title="Início" />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[c.primary]} />}

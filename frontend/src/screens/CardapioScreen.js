@@ -5,7 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getCardapio } from '../services/cardapioService';
 import MealEditModal from '../components/MealEditModal';
 import LoadingOverlay from '../components/LoadingOverlay';
-import ScreenHeader from '../components/ScreenHeader';
+import PageTitle from '../components/PageTitle';
 import AnimatedEnter from '../components/AnimatedEnter';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
@@ -58,7 +58,7 @@ export default function CardapioScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
-      <ScreenHeader title="Cardápio" />
+      <PageTitle title="Cardápio" />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}

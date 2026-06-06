@@ -8,7 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getAtividades, saveAtividade } from '../services/atividadeService';
 import { getIdosos } from '../services/idosoService';
 import SearchBar from '../components/SearchBar';
-import ScreenHeader from '../components/ScreenHeader';
+import PageTitle from '../components/PageTitle';
 import DateInput from '../components/DateInput';
 import BottomSheet from '../components/BottomSheet';
 import Toast from '../components/Toast';
@@ -262,7 +262,7 @@ export default function RegistroDiarioScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
-      <ScreenHeader title="Registro Diário" />
+      <PageTitle title="Registro Diário" />
 
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: 80 }]}

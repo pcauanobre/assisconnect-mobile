@@ -7,7 +7,7 @@ import IdosoCard from '../../components/IdosoCard';
 import SearchBar from '../../components/SearchBar';
 import FilterModal from '../../components/FilterModal';
 import LoadingOverlay from '../../components/LoadingOverlay';
-import ScreenHeader from '../../components/ScreenHeader';
+import PageTitle from '../../components/PageTitle';
 import EmptyState from '../../components/EmptyState';
 import FAB from '../../components/FAB';
 import AnimatedEnter from '../../components/AnimatedEnter';
@@ -97,7 +97,7 @@ export default function IdososListScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
-      <ScreenHeader title="Idosos" />
+      <PageTitle title="Idosos" />
       <AnimatedEnter index={0}>
         <View style={styles.searchRow}>
           <View style={{ flex: 1 }}>

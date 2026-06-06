@@ -9,7 +9,7 @@ import {
   getEstatisticas, getRelatorio, saveRelatorio,
   gerarPendentes, getRelatoriosPorAno,
 } from '../services/relatorioService';
-import ScreenHeader from '../components/ScreenHeader';
+import PageTitle from '../components/PageTitle';
 import FeedbackDialog from '../components/FeedbackDialog';
 import AnimatedEnter from '../components/AnimatedEnter';
 import AnimatedNumber from '../components/AnimatedNumber';
@@ -260,7 +260,7 @@ export default function RelatorioMensalScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.surface }}>
-      <ScreenHeader title="Relatorios" />
+      <PageTitle title="Relatórios" />
 
       <AnimatedEnter index={0}>
         <View style={[styles.yearBar, { backgroundColor: c.white, borderBottomColor: c.border }]}>
