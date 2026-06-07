@@ -35,7 +35,9 @@ export default function IdososListScreen({ navigation }) {
     try {
       setLoading(true);
       const res = await getIdosos();
-      setIdosos(res.data || []);
+      const list = res.data || [];
+      list.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+      setIdosos(list);
     } catch {
       // silenciosamente; UI mostra estado vazio
     } finally {

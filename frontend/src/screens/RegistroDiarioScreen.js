@@ -75,7 +75,9 @@ export default function RegistroDiarioScreen() {
         }
       }
       if (idososRes.status === 'fulfilled') {
-        const list = (idososRes.value.data || []).filter((i) => !i.inativo && !i.falecido);
+        const list = (idososRes.value.data || [])
+          .filter((i) => !i.inativo && !i.falecido)
+          .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
         setIdosos(list);
       }
     } catch {
