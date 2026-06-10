@@ -1,4 +1,118 @@
-# AssisConnect Mobile
+# (EN-US)
+# **AssisConnect Mobile**
+
+A direct continuation of **AssisConnect Web**, now focused on **mobile** (with a web preview).
+A full-stack project where the Java backend exposes a REST API and the React Native (Expo) frontend consumes that API.
+
+This project was adapted for an **academic environment (university)**, where installing software or changing system environment variables is not allowed.
+
+---
+
+## **🛠 Technologies Used**
+
+### Backend
+- Java 17+
+- MySQL
+- Maven (alternative / local mode)
+
+### Frontend
+- React Native
+- Expo
+- Expo Go (running on the phone)
+- React Native Web (browser preview)
+- Fetch API
+
+---
+
+## **Maven (alternative mode – university environment)**
+
+### The problem
+On university computers:
+- Installing Maven is not allowed
+- Changing the PATH or system environment variables is not allowed
+
+Because of that, **the traditional `mvn` command cannot be used**.
+
+---
+
+### The solution adopted in this project
+This project uses an **alternative way of running Maven**, allowing the backend to run **without installing Maven on the system**.
+
+Maven runs locally from the project itself, ensuring that:
+- The backend works on any computer
+- No system configuration is required
+- The project runs normally in an academic environment
+
+---
+
+## **How to run the project**
+
+## Backend (API)
+
+### 1) Go to the backend folder
+In the terminal, from the project root:
+
+  cd backend
+
+### 2) Run the backend (alternative mode – WITHOUT Maven installed)
+Use the command below:
+
+  .\mvnw spring-boot:run
+
+This command:
+- Automatically downloads everything the project needs
+- Compiles the backend
+- Starts the API
+
+No additional installation is required.
+
+---
+
+### 3) API running
+Once started, the API will be available at:
+- http://localhost:8080
+
+---
+
+## Frontend (Expo)
+
+### 1) Go to the frontend folder
+In the terminal, from the project root:
+
+  cd frontend
+
+### 2) Install dependencies
+  npm install
+
+### 3) Run the web preview
+  npx expo start --web --port 8081
+
+Open it in the browser:
+- http://localhost:8081
+
+---
+
+## Running on the phone (Expo Go)
+
+### 1) Start Expo
+  npx expo start --port 8081
+
+### 2) On the phone
+- Install the **Expo Go** app
+- Connect the phone to the same network as the computer
+- Scan the QR Code shown in the terminal
+
+The app will load directly on the phone.
+
+---
+
+## **Important Note**
+This method was chosen specifically for the **university environment**, ensuring the project runs without admin permissions, external installations, or changes to the operating system.
+
+---
+
+# (PT-BR)
+# **AssisConnect Mobile**
 
 Continuação direta do **AssisConnect Web**, agora voltado para **mobile** (com preview web).
 Projeto fullstack onde o backend em Java expõe uma API REST e o frontend em React Native (Expo) consome essa API.
@@ -7,7 +121,7 @@ Este projeto foi adaptado para **ambiente acadêmico (faculdade)**, onde não é
 
 ---
 
-## Tecnologias Utilizadas
+## **🛠 Tecnologias Utilizadas**
 
 ### Backend
 - Java 17+
@@ -23,7 +137,7 @@ Este projeto foi adaptado para **ambiente acadêmico (faculdade)**, onde não é
 
 ---
 
-## Maven (modo alternativo – ambiente de faculdade)
+## **Maven (modo alternativo – ambiente de faculdade)**
 
 ### O problema
 Em computadores de faculdade:
@@ -44,7 +158,7 @@ O Maven é executado localmente a partir do próprio projeto, garantindo que:
 
 ---
 
-## Como rodar o projeto
+## **Como rodar o projeto**
 
 ## Backend (API)
 
@@ -105,5 +219,5 @@ O aplicativo será carregado diretamente no celular.
 
 ---
 
-## Observação Importante
+## **Observação Importante**
 Este método foi escolhido especificamente para **ambiente de faculdade**, garantindo que o projeto rode sem permissões administrativas, instalações externas ou alterações no sistema operacional.
