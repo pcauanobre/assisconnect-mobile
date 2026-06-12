@@ -99,33 +99,33 @@ VALUES ('Edna Coutinho Magalhaes', 'F', '1942-08-21', 'Solteira',   'Vinicius Ma
 
 -- Cardapio semanal
 -- tipo: 'cafe' | 'almoco' | 'jantar'  (lowercase — padrao do frontend)
-INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Segunda', 'cafe',   'Pao integral com queijo e cafe com leite', 220);
+INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Segunda', 'cafe',   'Pão integral com queijo e café com leite', 220);
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Segunda', 'almoco', 'Frango grelhado com arroz e salada',       450);
-INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Segunda', 'jantar', 'Sopa de legumes com pao',                  280);
+INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Segunda', 'jantar', 'Sopa de legumes com pão',                  280);
 
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Terca',   'cafe',   'Mingau de aveia com banana',               200);
-INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Terca',   'almoco', 'Carne assada com pure e feijao',           520);
+INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Terca',   'almoco', 'Carne assada com purê e feijão',           520);
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Terca',   'jantar', 'Vitamina de banana com torrada',           250);
 
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Quarta',  'cafe',   'Iogurte natural com granola e mel',        180);
-INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Quarta',  'almoco', 'Peixe cozido com arroz e brocolis',        380);
-INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Quarta',  'jantar', 'Caldo de legumes com macarrao',            230);
+INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Quarta',  'almoco', 'Peixe cozido com arroz e brócolis',        380);
+INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Quarta',  'jantar', 'Caldo de legumes com macarrão',            230);
 
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Quinta',  'cafe',   'Tapioca com queijo e suco de laranja',     210);
-INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Quinta',  'almoco', 'Frango ensopado com macarrao',             490);
-INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Quinta',  'jantar', 'Caldo de feijao com pao',                  310);
+INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Quinta',  'almoco', 'Frango ensopado com macarrão',             490);
+INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Quinta',  'jantar', 'Caldo de feijão com pão',                  310);
 
-INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Sexta',   'cafe',   'Vitamina de mamao com biscoito integral',  190);
+INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Sexta',   'cafe',   'Vitamina de mamão com biscoito integral',  190);
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Sexta',   'almoco', 'Bife acebolado com arroz e salada',        510);
-INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Sexta',   'jantar', 'Sopa creme de abobora',                    260);
+INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Sexta',   'jantar', 'Sopa creme de abóbora',                    260);
 
-INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Sabado',  'cafe',   'Pao de queijo com cafe e fruta',           230);
+INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Sabado',  'cafe',   'Pão de queijo com café e fruta',           230);
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Sabado',  'almoco', 'Feijoada light com arroz e couve',         480);
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Sabado',  'jantar', 'Iogurte com granola e fruta',              200);
 
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Domingo', 'cafe',   'Bolo simples com leite e fruta',           240);
 INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Domingo', 'almoco', 'Frango assado com batata e salada',        530);
-INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Domingo', 'jantar', 'Sanduiche natural com suco',               290);
+INSERT INTO cardapio (dia, tipo, prato, calorias) VALUES ('Domingo', 'jantar', 'Sanduíche natural com suco',               290);
 
 -- Medicamentos (RF10)
 INSERT INTO medicamentos (idoso_id, nome, dosagem, horarios, frequencia, observacoes, ativo, data_cadastro)
