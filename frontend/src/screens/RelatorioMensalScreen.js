@@ -260,7 +260,7 @@ export default function RelatorioMensalScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.surface }}>
-      <ScreenHeader title="Relatorios" />
+      <ScreenHeader title="Relatorios" safeAreaTop={false} />
 
       <AnimatedEnter index={0}>
         <View style={[styles.yearBar, { backgroundColor: c.white, borderBottomColor: c.border }]}>

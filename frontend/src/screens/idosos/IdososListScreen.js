@@ -99,7 +99,7 @@ export default function IdososListScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
-      <ScreenHeader title="Idosos" />
+      <ScreenHeader title="Idosos" safeAreaTop={false} />
       <AnimatedEnter index={0}>
         <View style={styles.searchRow}>
           <View style={{ flex: 1 }}>

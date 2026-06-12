@@ -58,7 +58,7 @@ export default function CardapioScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
-      <ScreenHeader title="Cardápio" />
+      <ScreenHeader title="Cardápio" safeAreaTop={false} />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}

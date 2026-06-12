@@ -264,7 +264,7 @@ export default function RegistroDiarioScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: c.surface }]}>
-      <ScreenHeader title="Registro Diário" />
+      <ScreenHeader title="Registro Diário" safeAreaTop={false} />
 
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: 80 }]}

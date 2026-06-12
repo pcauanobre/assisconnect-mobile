@@ -6,10 +6,10 @@ import { useAccessibility } from '../contexts/AccessibilityContext';
 
 const HEADER_HEIGHT = 56;
 
-export default function ScreenHeader({ title, onBack }) {
+export default function ScreenHeader({ title, onBack, safeAreaTop = true }) {
   const { activeColors, scale } = useAccessibility();
   const insets = useSafeAreaInsets();
-  const topPadding = Platform.OS === 'web' ? 0 : insets.top;
+  const topPadding = (Platform.OS === 'web' || !safeAreaTop) ? 0 : insets.top;
 
   const enter = useRef(new Animated.Value(0)).current;
   const backScale = useRef(new Animated.Value(1)).current;
