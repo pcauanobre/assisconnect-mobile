@@ -51,8 +51,9 @@ export default function TermosUsoScreen({ onAceitar }) {
   async function handleAceitar() {
     setAceitando(true);
     try {
-      await AsyncStorage.setItem(TERMOS_KEY, 'true');
-      onAceitar();
+      if (onAceitar) {
+        await onAceitar();
+      }
     } finally {
       setAceitando(false);
     }

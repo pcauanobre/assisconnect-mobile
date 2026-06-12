@@ -27,9 +27,11 @@ export default function AppNavigator() {
     headerTitleStyle: { fontWeight: '700' },
   };
 
+  const getTermosKey = () => `@assisconnect_termos_${user?.usuario}`;
+
   useEffect(() => {
     if (user) {
-      AsyncStorage.getItem(TERMOS_KEY).then((val) => {
+      AsyncStorage.getItem(getTermosKey()).then((val) => {
         setTermosAceitos(val === 'true');
       });
     } else {
@@ -55,7 +57,10 @@ export default function AppNavigator() {
             name="Termos" 
             options={{ headerShown: false }}
           >
-            {() => <TermosUsoScreen onAceitar={() => setTermosAceitos(true)} />}
+            {() => <TermosUsoScreen onAceitar={async () => {
+              await AsyncStorage.setItem(getTermosKey(), 'true');
+              setTermosAceitos(true);
+            }} />}
           </RootStack.Screen>
         ) : (
           <>
