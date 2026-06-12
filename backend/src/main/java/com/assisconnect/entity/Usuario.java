@@ -17,7 +17,7 @@ public class Usuario {
     private String telefone;
 
     @Lob
-    @Column(name = "foto_url", columnDefinition = "MEDIUMTEXT")
+    @Column(name = "foto_url", columnDefinition = "TEXT")
     private String fotoUrl;
 
     private boolean administrador;

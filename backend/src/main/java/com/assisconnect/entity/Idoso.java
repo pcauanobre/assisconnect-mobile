@@ -30,7 +30,7 @@ public class Idoso {
     private String deficiencias;
     private String observacoes;
 
-    @Column(columnDefinition = "MEDIUMTEXT")
+    @Column(columnDefinition = "TEXT")
     private String fotoUrl;
 
     @Column(name = "data_criacao")
