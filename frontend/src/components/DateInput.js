@@ -1,5 +1,5 @@
 import React, { useState, useMemo, forwardRef, useImperativeHandle } from 'react';
-import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Modal, ScrollView } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
@@ -90,56 +90,83 @@ function DateInput({ value, onChange, placeholder = 'DD/MM/AAAA', style, iconOnl
     setShow(false);
   }
 
+  const [selectingYear, setSelectingYear] = useState(false);
+  const yearsList = useMemo(() => {
+    const currentYear = new Date().getFullYear() + 5;
+    const arr = [];
+    for (let i = currentYear; i >= currentYear - 120; i--) arr.push(i);
+    return arr;
+  }, []);
+
   const selectedIso = tempValue;
   const calendarModal = (
     <Modal visible={show} transparent animationType="fade" onRequestClose={() => setShow(false)}>
       <Pressable style={styles.overlay} onPress={() => setShow(false)}>
         <Pressable style={[styles.sheet, { backgroundColor: c.white }]} onPress={() => {}}>
           <View style={[styles.calHeader, { borderBottomColor: c.border }]}>
-            <Pressable onPress={prevMonth} style={styles.navBtn} hitSlop={8}>
+            <Pressable onPress={prevMonth} style={[styles.navBtn, selectingYear && { opacity: 0 }]} disabled={selectingYear} hitSlop={8}>
               <Feather name="chevron-left" size={22} color={c.primary} />
             </Pressable>
-            <View style={styles.headerCenter}>
-              <Text style={[styles.calTitle, { color: c.textPrimary }]}>{MESES[viewMonth]}</Text>
-              <Text style={[styles.calYear, { color: c.textSecondary }]}>{viewYear}</Text>
-            </View>
-            <Pressable onPress={nextMonth} style={styles.navBtn} hitSlop={8}>
+            <Pressable style={styles.headerCenter} onPress={() => setSelectingYear(!selectingYear)}>
+              <Text style={[styles.calTitle, { color: c.textPrimary }]}>{selectingYear ? 'Selecione o Ano' : MESES[viewMonth]}</Text>
+              <Text style={[styles.calYear, { color: c.primary, fontWeight: '700' }]}>{viewYear} <Feather name={selectingYear ? 'chevron-up' : 'chevron-down'} size={12} /></Text>
+            </Pressable>
+            <Pressable onPress={nextMonth} style={[styles.navBtn, selectingYear && { opacity: 0 }]} disabled={selectingYear} hitSlop={8}>
               <Feather name="chevron-right" size={22} color={c.primary} />
             </Pressable>
           </View>
-          <View style={styles.weekRow}>
-            {DIAS_SEMANA.map(d => (
-              <Text key={d} style={[styles.weekLabel, { color: c.textSecondary }]}>{d}</Text>
-            ))}
-          </View>
-          <View style={styles.daysGrid}>
-            {calendarDays.map((day, idx) => {
-              if (!day) return <View key={`e-${idx}`} style={styles.dayCell} />;
-              const iso = toIso(viewYear, viewMonth, day);
-              const selected = iso === selectedIso;
-              const isToday = iso === today;
-              return (
-                <Pressable
-                  key={iso}
-                  style={[
-                    styles.dayCell,
-                    selected && { backgroundColor: c.primary, borderRadius: 50 },
-                    !selected && isToday && [styles.todayRing, { borderColor: c.primary }],
-                  ]}
-                  onPress={() => selectDay(day)}
-                >
-                  <Text style={[
-                    styles.dayText,
-                    { color: c.textPrimary },
-                    selected && { color: '#fff', fontWeight: '700' },
-                    isToday && !selected && { color: c.primary, fontWeight: '700' },
-                  ]}>
-                    {day}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          
+          {!selectingYear ? (
+            <>
+              <View style={styles.weekRow}>
+                {DIAS_SEMANA.map(d => (
+                  <Text key={d} style={[styles.weekLabel, { color: c.textSecondary }]}>{d}</Text>
+                ))}
+              </View>
+              <View style={styles.daysGrid}>
+                {calendarDays.map((day, idx) => {
+                  if (!day) return <View key={`e-${idx}`} style={styles.dayCell} />;
+                  const iso = toIso(viewYear, viewMonth, day);
+                  const selected = iso === selectedIso;
+                  const isToday = iso === today;
+                  return (
+                    <Pressable
+                      key={iso}
+                      style={[
+                        styles.dayCell,
+                        selected && { backgroundColor: c.primary, borderRadius: 50 },
+                        !selected && isToday && [styles.todayRing, { borderColor: c.primary }],
+                      ]}
+                      onPress={() => selectDay(day)}
+                    >
+                      <Text style={[
+                        styles.dayText,
+                        { color: c.textPrimary },
+                        selected && { color: '#fff', fontWeight: '700' },
+                        isToday && !selected && { color: c.primary, fontWeight: '700' },
+                      ]}>
+                        {day}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          ) : (
+            <View style={{ height: 260 }}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.yearsGrid}>
+                {yearsList.map(y => (
+                  <Pressable 
+                    key={y} 
+                    style={[styles.yearCell, viewYear === y && { backgroundColor: c.primary }]} 
+                    onPress={() => { setViewYear(y); setSelectingYear(false); }}
+                  >
+                    <Text style={[styles.yearText, { color: c.textPrimary }, viewYear === y && { color: '#fff', fontWeight: 'bold' }]}>{y}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
           <View style={[styles.footer, { borderTopColor: c.border }]}>
             <Pressable style={styles.cancelBtn} onPress={() => setShow(false)}>
               <Text style={[styles.cancelText, { color: c.textSecondary }]}>Cancelar</Text>
@@ -280,6 +307,22 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   confirmText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  yearsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 10,
+    justifyContent: 'center',
+  },
+  yearCell: {
+    width: '30%',
+    margin: '1.5%',
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  yearText: {
+    fontSize: 15,
+  },
 });
 
 export default forwardRef(DateInput);

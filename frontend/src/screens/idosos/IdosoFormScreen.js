@@ -74,6 +74,20 @@ export default function IdosoFormScreen({ route, navigation }) {
 
   async function handleSave() {
     if (!form.nome.trim()) { showToast('O nome é obrigatório.', 'warn'); return; }
+    
+    if (form.dataNascimento) {
+      const parts = form.dataNascimento.split('-');
+      const birthDate = new Date(parts[0], parts[1] - 1, parts[2]);
+      let age = new Date().getFullYear() - birthDate.getFullYear();
+      const m = new Date().getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && new Date().getDate() < birthDate.getDate())) {
+        age--;
+      }
+      if (age < 30) {
+        showToast('O idoso deve ter pelo menos 30 anos de idade.', 'warn');
+        return;
+      }
+    }
     try {
       setSaving(true);
       const payload = { ...form, fotoUrl: foto || '', dataCriacao: isEdit ? undefined : new Date().toISOString().split('T')[0] };
